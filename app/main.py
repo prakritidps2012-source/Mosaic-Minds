@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from .models import InterviewRequest, InterviewResponse
 from .session import session_manager
 from .interviewer import handle_interview_turn
+from .config import LLM_PROVIDER
 
 app = FastAPI(
     title="AI Interview Agent API",
@@ -24,7 +25,7 @@ def read_root():
     return {
         "status": "healthy",
         "message": "AI Interview Agent API is active!",
-        "engine": "Deterministic Mock / Sandbox Mode"
+        "engine": f"Mode: {LLM_PROVIDER}"
     }
 
 @app.post("/api/interview", response_model=InterviewResponse)
