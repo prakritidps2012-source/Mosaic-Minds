@@ -83,3 +83,33 @@ uvicorn app.main:app --host 127.0.0.1 --port 8000
 # Run full simulation
 python test_api.py
 ```
+
+---
+
+## 3. Gemini LLM Integration (Phase 3)
+
+**Prompt:**
+> Implement Phase 3: Gemini LLM integration for the existing AI Interview Agent.
+> 
+> Requirements:
+> - Keep the existing FastAPI API contract unchanged.
+> - Keep session management and the existing deterministic flow as fallback.
+> - Use GEMINI_API_KEY from .env.
+> - Make the LLM integration configurable through LLM_PROVIDER.
+> - If Gemini is unavailable or the API key is missing, automatically fall back to the existing deterministic/mock interviewer.
+> - Do not expose or hardcode the API key.
+> - Keep the implementation simple and hackathon-friendly.
+
+**Work Performed:**
+- **Gemini Integration:** Implemented `call_gemini_api` in `app/interviewer.py` using `httpx`.
+- **LLM_PROVIDER Configuration:** Added `GEMINI_API_KEY` and `LLM_PROVIDER` to `app/config.py` and `.env` (template).
+- **Fallback Mechanism:** Implemented robust logic to automatically switch between `gemini` and `mock` providers.
+- **Adaptive Interaction:** Updated `handle_interview_turn` to use Gemini for question generation and final feedback, while maintaining conversation history context.
+- **Verification:** Verified entire interview flow, fallback mechanism, and feedback generation using `test_api.py`.
+
+**Test Commands:**
+```powershell
+# Set LLM_PROVIDER="gemini" or "mock" in .env
+# Run simulation
+python test_api.py
+```
