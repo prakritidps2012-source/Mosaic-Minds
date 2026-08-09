@@ -1,0 +1,2059 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Abtalks Interview Agent — Demo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#12161C;
+    --surface:#1A2029;
+    --surface-raised:#212836;
+    --border:#2A3240;
+    --gold:#E0B84C;
+    --gold-dim:#8A742F;
+    --rust:#D1654F;
+    --sage:#6FA98C;
+    --text:#EDEEF0;
+    --text-muted:#8A93A3;
+    --text-faint:#5C6472;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:'IBM Plex Sans',sans-serif;
+    min-height:100vh;
+  }
+  .app{
+    display:flex;
+    max-width:1180px;
+    margin:0 auto;
+    min-height:100vh;
+  }
+  /* ---------- LEFT: ROSTER ---------- */
+  .roster{
+    width:320px;
+    flex-shrink:0;
+    border-right:1px solid var(--border);
+    padding:28px 18px;
+    display:flex;
+    flex-direction:column;
+    gap:16px;
+    max-height:100vh;
+    overflow-y:auto;
+    position:sticky;
+    top:0;
+  }
+  .roster-header{padding:0 8px 4px;}
+  .api-key-box{
+    margin:0 8px 4px;
+    padding:10px 10px 8px;
+    border:1px solid var(--border);
+    border-radius:8px;
+    background:var(--surface-raised);
+  }
+  .api-key-row{display:flex; gap:6px;}
+  .api-key-row input{
+    flex:1;
+    min-width:0;
+    background:var(--bg);
+    border:1px solid var(--border);
+    border-radius:6px;
+    color:var(--text);
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11.5px;
+    padding:7px 8px;
+  }
+  .api-key-row input::placeholder{color:var(--text-faint);}
+  .api-key-row button{
+    background:var(--gold-dim);
+    color:var(--text);
+    border:none;
+    border-radius:6px;
+    padding:0 12px;
+    font-size:12px;
+    font-family:'IBM Plex Sans',sans-serif;
+    cursor:pointer;
+    flex-shrink:0;
+  }
+  .api-key-row button:hover{background:var(--gold);}
+  .offline-toggle-row{
+    display:flex;
+    align-items:flex-start;
+    gap:7px;
+    margin-top:8px;
+    font-size:11px;
+    color:var(--text-muted);
+    line-height:1.4;
+    cursor:pointer;
+  }
+  .offline-toggle-row input{margin-top:2px; flex-shrink:0;}
+  .api-key-status{
+    margin:6px 2px 0;
+    font-size:11px;
+    color:var(--text-faint);
+    line-height:1.4;
+  }
+  .api-key-status.set{color:var(--sage);}
+  .api-key-status.error{color:var(--rust);}
+  .eyebrow{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px;
+    letter-spacing:0.14em;
+    text-transform:uppercase;
+    color:var(--gold);
+    margin:0 0 6px;
+  }
+  .roster-header h1{
+    font-family:'Fraunces',serif;
+    font-weight:500;
+    font-size:22px;
+    margin:0 0 4px;
+    letter-spacing:-0.01em;
+  }
+  .roster-header p{
+    font-size:13px;
+    color:var(--text-muted);
+    margin:0;
+    line-height:1.5;
+  }
+  .cand-card{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:10px;
+    padding:12px 14px;
+    cursor:pointer;
+    transition:border-color .15s ease, background .15s ease;
+  }
+  .cand-card:hover{border-color:var(--gold-dim);}
+  .cand-card.active{
+    border-color:var(--gold);
+    background:var(--surface-raised);
+  }
+  .cand-name{font-weight:600;font-size:14.5px;margin:0 0 1px;}
+  .cand-role{font-size:12px;color:var(--text-muted);margin:0 0 9px;}
+  .signal-strip{display:flex;gap:2px;flex-wrap:wrap;}
+  .tick{width:7px;height:14px;border-radius:2px;flex-shrink:0;}
+  .tick.failed{background:var(--rust);}
+  .tick.skipped{background:transparent;border:1px solid var(--gold);}
+  .tick.struggled{background:var(--gold);opacity:.55;}
+  .tick.solid{background:transparent;border:1px solid var(--sage);}
+  .tick.first_try{background:var(--sage);opacity:.55;}
+
+  /* ---------- RIGHT: STAGE ---------- */
+  .stage{
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    min-width:0;
+  }
+  .stage-empty{
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+    padding:40px;
+    color:var(--text-faint);
+  }
+  .stage-empty h2{
+    font-family:'Fraunces',serif;
+    font-weight:500;
+    font-size:26px;
+    color:var(--text-muted);
+    margin:0 0 8px;
+  }
+  .stage-empty p{font-size:14px;max-width:340px;line-height:1.6;}
+
+  .stage-header{
+    padding:24px 32px 18px;
+    border-bottom:1px solid var(--border);
+  }
+  .stage-header-top{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;}
+  .stage-header h2{
+    font-family:'Fraunces',serif;
+    font-weight:500;
+    font-size:23px;
+    margin:0 0 2px;
+  }
+  .stage-header .role{font-size:13px;color:var(--text-muted);}
+  .stage-header-right{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    flex-shrink:0;
+  }
+  .proctor-box{
+    position:relative;
+    width:64px;
+    height:48px;
+    border-radius:8px;
+    overflow:hidden;
+    border:1px solid var(--border);
+    background:var(--surface-raised);
+    flex-shrink:0;
+  }
+  .proctor-box video{
+    width:100%;
+    height:100%;
+    object-fit:cover;
+    display:block;
+    transform:scaleX(-1); /* mirror, like a normal webcam preview */
+  }
+  .proctor-off{
+    position:absolute;
+    inset:0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:9px;
+    color:var(--text-faint);
+    text-align:center;
+    padding:2px;
+    line-height:1.2;
+  }
+  .proctor-toggle-btn{
+    background:none;
+    border:1px solid var(--border);
+    color:var(--text-muted);
+    border-radius:20px;
+    padding:6px 12px;
+    font-family:'IBM Plex Sans',sans-serif;
+    font-size:12px;
+    cursor:pointer;
+    white-space:nowrap;
+    transition:filter .15s ease;
+  }
+  .proctor-toggle-btn:hover{filter:brightness(1.15);}
+  .proctor-toggle-btn.active{border-color:var(--sage); color:var(--sage);}
+  .proctor-toggle-btn:disabled{opacity:0.6; cursor:not-allowed;}
+  .proctor-status{
+    margin:8px 0 0;
+    font-size:11.5px;
+    color:var(--text-faint);
+    min-height:14px;
+  }
+  .proctor-status.on{color:var(--sage);}
+  .proctor-status.error{color:var(--rust);}
+  .integrity-notice{
+    margin:6px 0 0;
+    font-size:11px;
+    color:var(--text-faint);
+    font-family:'IBM Plex Mono',monospace;
+    letter-spacing:.02em;
+  }
+  .session-pill{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px;
+    color:var(--text-faint);
+    border:1px solid var(--border);
+    border-radius:20px;
+    padding:5px 12px;
+    white-space:nowrap;
+  }
+  .focus-row{
+    display:flex;
+    gap:6px;
+    margin-top:16px;
+    flex-wrap:wrap;
+  }
+  .focus-chip{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:10.5px;
+    padding:4px 9px;
+    border-radius:6px;
+    border:1px solid var(--border);
+    color:var(--text-faint);
+    display:flex;
+    align-items:center;
+    gap:5px;
+    transition:opacity .2s ease, border-color .2s ease;
+  }
+  .focus-chip .dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;}
+  .focus-chip.done{opacity:.4;}
+  .focus-chip.current{border-color:var(--gold);color:var(--text);}
+  .dot.failed{background:var(--rust);}
+  .dot.skipped{background:var(--gold);}
+  .dot.struggled{background:var(--gold);}
+  .dot.solid{background:var(--sage);}
+  .dot.first_try{background:var(--sage);}
+
+  .transcript{
+    flex:1;
+    overflow-y:auto;
+    padding:24px 32px;
+    display:flex;
+    flex-direction:column;
+    gap:14px;
+  }
+  .msg{max-width:72%;padding:12px 15px;border-radius:12px;font-size:14.5px;line-height:1.55;}
+  .msg.interviewer{
+    align-self:flex-start;
+    background:var(--surface);
+    border-left:2px solid var(--gold);
+    border-radius:4px 12px 12px 12px;
+  }
+  .msg.candidate{
+    align-self:flex-end;
+    background:var(--surface-raised);
+    border-radius:12px 4px 12px 12px;
+  }
+  .msg.review{
+    align-self:flex-start;
+    background:rgba(209,101,79,0.12);
+    border-left:2px solid var(--rust);
+    border-radius:4px 12px 12px 12px;
+  }
+  .msg.review .tag{color:var(--rust);}
+  .judgement-badge{
+    display:inline-flex;align-items:center;gap:8px;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;letter-spacing:.08em;text-transform:uppercase;
+    padding:7px 16px;border-radius:20px;border:1px solid var(--border);
+    margin-bottom:20px;
+  }
+  .judgement-badge.positive{border-color:var(--sage);color:var(--sage);}
+  .judgement-badge.negative{border-color:var(--rust);color:var(--rust);}
+  .judgement-badge.mixed{border-color:var(--gold);color:var(--gold);}
+  .msg .tag{
+    display:block;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:10px;
+    letter-spacing:0.08em;
+    text-transform:uppercase;
+    color:var(--text-faint);
+    margin-bottom:5px;
+  }
+  .typing{
+    align-self:flex-start;
+    display:flex;
+    gap:4px;
+    padding:12px 15px;
+  }
+  .typing span{
+    width:6px;height:6px;border-radius:50%;background:var(--text-faint);
+    animation:bounce 1.2s infinite ease-in-out;
+  }
+  .typing span:nth-child(2){animation-delay:.15s;}
+  .typing span:nth-child(3){animation-delay:.3s;}
+  @keyframes bounce{0%,60%,100%{transform:translateY(0);opacity:.4;}30%{transform:translateY(-4px);opacity:1;}}
+
+  .composer{
+    border-top:1px solid var(--border);
+    padding:16px 32px 22px;
+    display:flex;
+    gap:10px;
+  }
+  .composer input{
+    flex:1;
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:9px;
+    padding:12px 14px;
+    color:var(--text);
+    font-family:'IBM Plex Sans',sans-serif;
+    font-size:14px;
+  }
+  .composer input:focus{outline:none;border-color:var(--gold-dim);}
+  .composer input::placeholder{color:var(--text-faint);}
+  .composer button, .btn{
+    background:var(--gold);
+    color:#20200F;
+    border:none;
+    border-radius:9px;
+    padding:12px 20px;
+    font-family:'IBM Plex Sans',sans-serif;
+    font-weight:600;
+    font-size:14px;
+    cursor:pointer;
+    transition:filter .15s ease;
+    white-space:nowrap;
+  }
+  .composer button:hover, .btn:hover{filter:brightness(1.08);}
+  .composer button:disabled{background:var(--border);color:var(--text-faint);cursor:not-allowed;}
+  .composer-note{
+    width:100%;
+    text-align:center;
+    padding:12px 14px;
+    color:var(--text-muted);
+    font-size:13px;
+    font-family:'IBM Plex Mono',monospace;
+  }
+  .composer-note.camera-violation{
+    color:var(--rust);
+    border:1px solid var(--rust);
+    border-radius:8px;
+    font-weight:600;
+  }
+
+  /* ---------- LEADERBOARD ---------- */
+  .lb-nav-btn{width:calc(100% - 16px); margin:0 8px 2px; text-align:center;}
+  .lb-tabs{display:flex; gap:8px; margin-top:16px;}
+  .lb-tab{
+    background:none;
+    border:1px solid var(--border);
+    color:var(--text-muted);
+    border-radius:20px;
+    padding:7px 16px;
+    font-family:'IBM Plex Sans',sans-serif;
+    font-size:12.5px;
+    cursor:pointer;
+    transition:border-color .15s ease, color .15s ease;
+  }
+  .lb-tab:hover{border-color:var(--gold-dim);}
+  .lb-tab.active{border-color:var(--gold); color:var(--gold);}
+  .lb-note{
+    font-size:12.5px;
+    color:var(--text-muted);
+    line-height:1.6;
+    margin:0 0 20px;
+    max-width:640px;
+  }
+  .lb-list{display:flex; flex-direction:column; gap:8px;}
+  .lb-row{
+    display:flex;
+    align-items:center;
+    gap:14px;
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:10px;
+    padding:12px 16px;
+    cursor:pointer;
+    transition:border-color .15s ease, background .15s ease;
+  }
+  .lb-row:hover{border-color:var(--gold-dim); background:var(--surface-raised);}
+  .lb-rank{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:13px;
+    color:var(--text-faint);
+    width:34px;
+    flex-shrink:0;
+  }
+  .lb-rank.top{color:var(--gold);}
+  .lb-main{flex:1; min-width:0;}
+  .lb-name{font-weight:600; font-size:14px;}
+  .lb-role{font-size:12px; color:var(--text-muted); margin-top:1px;}
+  .lb-stats{display:flex; gap:6px; flex-shrink:0;}
+  .lb-stat{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:10.5px;
+    padding:3px 8px;
+    border-radius:6px;
+    border:1px solid var(--border);
+    color:var(--text-faint);
+    white-space:nowrap;
+  }
+  .lb-stat.pass{color:var(--sage); border-color:var(--sage);}
+  .lb-stat.fail{color:var(--rust); border-color:var(--rust);}
+  .lb-stat.skip{color:var(--gold); border-color:var(--gold);}
+  .lb-score-wrap{display:flex; align-items:center; gap:10px; width:150px; flex-shrink:0;}
+  .lb-score-bar{
+    flex:1;
+    height:6px;
+    border-radius:3px;
+    background:var(--border);
+    overflow:hidden;
+  }
+  .lb-score-fill{height:100%; background:var(--gold); border-radius:3px;}
+  .lb-score-num{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:13px;
+    font-weight:600;
+    width:32px;
+    text-align:right;
+  }
+  .chart-list{display:flex; flex-direction:column; gap:12px;}
+  .chart-row{
+    display:flex;
+    align-items:center;
+    gap:14px;
+    cursor:pointer;
+    padding:6px 8px;
+    border-radius:8px;
+    transition:background .15s ease;
+  }
+  .chart-row:hover{background:var(--surface);}
+  .chart-label{width:190px; flex-shrink:0; min-width:0;}
+  .chart-name{display:block; font-size:13.5px; font-weight:600;}
+  .chart-role{display:block; font-size:11px; color:var(--text-faint); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .chart-bar-track{
+    flex:1;
+    height:16px;
+    border-radius:4px;
+    background:var(--surface);
+    border:1px solid var(--border);
+    overflow:hidden;
+  }
+  .chart-bar-fill{height:100%; border-radius:3px; transition:width .3s ease;}
+  .chart-bar-fill.high{background:var(--sage);}
+  .chart-bar-fill.mid{background:var(--gold);}
+  .chart-bar-fill.low{background:var(--rust);}
+  .chart-value{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12.5px;
+    width:40px;
+    text-align:right;
+    flex-shrink:0;
+  }
+
+  /* ---------- FEEDBACK REPORT ---------- */
+  .report{padding:28px 32px 36px;overflow-y:auto;flex:1;}
+  .report-summary{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:12px;
+    padding:20px 22px;
+    font-size:14.5px;
+    line-height:1.65;
+    margin-bottom:22px;
+  }
+  .report-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:22px;}
+  .report-col h3{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px;
+    letter-spacing:.1em;
+    text-transform:uppercase;
+    margin:0 0 10px;
+  }
+  .report-col.strengths h3{color:var(--sage);}
+  .report-col.gaps h3{color:var(--rust);}
+  .report-col ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px;}
+  .report-col li{
+    font-size:13.5px;
+    line-height:1.5;
+    padding-left:18px;
+    position:relative;
+    color:var(--text);
+  }
+  .report-col.strengths li::before{content:"✓";position:absolute;left:0;color:var(--sage);}
+  .report-col.gaps li::before{content:"–";position:absolute;left:0;color:var(--rust);}
+  .report-next h3{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px;
+    letter-spacing:.1em;
+    text-transform:uppercase;
+    color:var(--gold);
+    margin:0 0 10px;
+  }
+  .report-next ul{list-style:none;margin:0 0 24px;padding:0;display:flex;flex-direction:column;gap:8px;}
+  .report-next li{font-size:13.5px;line-height:1.5;padding-left:18px;position:relative;}
+  .report-next li::before{content:"→";position:absolute;left:0;color:var(--gold);}
+
+  .report-actions{display:flex;gap:10px;margin-bottom:24px;flex-wrap:wrap;}
+  .report-actions .btn.secondary{background:transparent;border:1px solid var(--border);color:var(--text);}
+  .save-status{font-size:12px;color:var(--text-faint);display:flex;align-items:center;gap:6px;margin-bottom:20px;font-family:'IBM Plex Mono',monospace;}
+  .save-status.ok{color:var(--sage);}
+  .save-status.err{color:var(--rust);}
+
+  .focus-section{margin-bottom:24px;}
+  .focus-section h3{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px;letter-spacing:.1em;text-transform:uppercase;
+    color:var(--gold);margin:0 0 10px;
+  }
+  .focus-list{display:flex;flex-direction:column;gap:8px;}
+  .focus-item{
+    display:flex;align-items:flex-start;gap:10px;
+    background:var(--surface);border:1px solid var(--border);
+    border-radius:9px;padding:10px 13px;
+  }
+  .focus-item .dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:5px;}
+  .focus-item .fi-title{font-weight:600;font-size:13.5px;}
+  .focus-item .fi-note{font-size:12.5px;color:var(--text-muted);margin-top:2px;line-height:1.4;}
+  .focus-item .fi-day{
+    font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--text-faint);
+  }
+
+  .saved-section{margin-top:20px;padding-top:16px;border-top:1px solid var(--border);}
+  .saved-section h4{
+    font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:.1em;
+    text-transform:uppercase;color:var(--text-faint);margin:0 0 10px;padding:0 8px;
+  }
+  .saved-item{
+    padding:9px 12px;border-radius:8px;cursor:pointer;font-size:12.5px;
+    display:flex;flex-direction:column;gap:2px;
+  }
+  .saved-item:hover{background:var(--surface);}
+  .saved-item .si-name{font-weight:600;color:var(--text);}
+  .saved-item .si-meta{color:var(--text-faint);font-family:'IBM Plex Mono',monospace;font-size:10.5px;}
+  .saved-empty{font-size:12px;color:var(--text-faint);padding:0 8px;}
+
+  @media (max-width:760px){
+    .app{flex-direction:column;}
+    .roster{width:100%;max-height:none;position:relative;border-right:none;border-bottom:1px solid var(--border);}
+    .stage-header{padding:20px;}
+    .transcript{padding:18px 20px;}
+    .composer{padding:14px 20px 18px;}
+    .report{padding:20px;}
+    .report-grid{grid-template-columns:1fr;}
+    .msg{max-width:88%;}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="roster" id="roster">
+    <div class="roster-header">
+      <p class="eyebrow">The Forge · 31 Days</p>
+      <h1>The Proving Ground</h1>
+      <p>Pick a candidate to start a personalized interview. The colored strip is each candidate's mission signal — pick a rust tick and watch it lead the interview.</p>
+    </div>
+    <button id="leaderboard-btn" class="btn secondary lb-nav-btn" type="button">🏆 Cohort Leaderboard</button>
+    <div id="api-key-box" class="api-key-box">
+      <div class="api-key-row">
+        <input id="api-key-input" type="password" placeholder="sk-ant-… (only needed outside claude.ai)" autocomplete="off" spellcheck="false">
+        <button id="api-key-save" type="button">Save</button>
+      </div>
+      <label class="offline-toggle-row">
+        <input type="checkbox" id="offline-mode-toggle" checked>
+        <span>Use offline mode (free, no API key needed — heuristic grading instead of live AI judging)</span>
+      </label>
+      <p id="api-key-status" class="api-key-status"></p>
+    </div>
+    <div id="roster-list"></div>
+    <div class="saved-section">
+      <h4>Saved interviews</h4>
+      <div id="saved-list"><p class="saved-empty">Loading…</p></div>
+    </div>
+  </aside>
+
+  <main class="stage" id="stage">
+    <div class="stage-empty">
+      <h2>No candidate selected</h2>
+      <p>Choose someone from the roster on the left. The interview plan is built live from their actual mission history — failed and skipped days surface first.</p>
+    </div>
+  </main>
+</div>
+
+<script>
+const DATA = {"candidates": [{"id": "CAND-001", "name": "Sarah Johnson", "role": "Senior Data Engineer", "years": 9, "missions": [{"day": 7, "title": "Embeddings Explained", "passed": true, "attempts": 1}, {"day": 8, "title": "Vector Databases Overview", "passed": true, "attempts": 1}, {"day": 10, "title": "Retrieval & Matching Engine", "passed": true, "attempts": 2}, {"day": 12, "title": "Prompt Engineering Fundamentals", "passed": true, "attempts": 4}, {"day": 16, "title": "Chatbot Backend & API Integration", "passed": true, "attempts": 1}, {"day": 22, "title": "Multi-Agent Orchestration", "passed": true, "attempts": 2}, {"day": 23, "title": "Model Context Protocol (MCP)", "passed": true, "attempts": 2}, {"day": 28, "title": "Docker & Kubernetes Deployment", "passed": true, "attempts": 3}, {"day": 29, "title": "Monitoring, Logging & Observability", "skipped": true}, {"day": 31, "title": "Capstone Project & Final Demo", "passed": true, "attempts": 1}]}, {"id": "CAND-002", "name": "Alex Turner", "role": "Backend Software Engineer", "years": 5, "missions": [{"day": 7, "title": "Embeddings Explained", "passed": true, "attempts": 3}, {"day": 8, "title": "Vector Databases Overview", "passed": true, "attempts": 2}, {"day": 10, "title": "Retrieval & Matching Engine", "passed": true, "attempts": 4}, {"day": 12, "title": "Prompt Engineering Fundamentals", "passed": true, "attempts": 5}, {"day": 13, "title": "Function Calling & Structured Outputs", "passed": true, "attempts": 4}, {"day": 16, "title": "Chatbot Backend & API Integration", "passed": true, "attempts": 1}, {"day": 18, "title": "Streaming Responses", "passed": true, "attempts": 1}, {"day": 22, "title": "Multi-Agent Orchestration", "passed": true, "attempts": 3}, {"day": 28, "title": "Docker & Kubernetes Deployment", "passed": true, "attempts": 1}, {"day": 31, "title": "Capstone Project & Final Demo", "passed": true, "attempts": 2}]}, {"id": "CAND-003", "name": "Emily Chen", "role": "AI Engineer", "years": 6, "missions": [{"day": 7, "title": "Embeddings Explained", "passed": true, "attempts": 1}, {"day": 8, "title": "Vector Databases Overview", "passed": true, "attempts": 1}, {"day": 10, "title": "Retrieval & Matching Engine", "passed": true, "attempts": 1}, {"day": 11, "title": "RAG End-to-End & LLM API Basics", "passed": true, "attempts": 1}, {"day": 12, "title": "Prompt Engineering Fundamentals", "passed": true, "attempts": 1}, {"day": 13, "title": "Function Calling & Structured Outputs", "passed": true, "attempts": 1}, {"day": 21, "title": "LangChain Agents", "passed": true, "attempts": 1}, {"day": 22, "title": "Multi-Agent Orchestration", "passed": true, "attempts": 1}, {"day": 23, "title": "Model Context Protocol (MCP)", "passed": true, "attempts": 1}, {"day": 31, "title": "Capstone Project & Final Demo", "passed": true, "attempts": 1}]}, {"id": "CAND-004", "name": "David Miller", "role": "Business Analyst", "years": 8, "missions": [{"day": 7, "title": "Embeddings Explained", "passed": true, "attempts": 4}, {"day": 8, "title": "Vector Databases Overview", "passed": true, "attempts": 5}, {"day": 10, "title": "Retrieval & Matching Engine", "passed": true, "attempts": 5}, {"day": 12, "title": "Prompt Engineering Fundamentals", "passed": true, "attempts": 3}, {"day": 16, "title": "Chatbot Backend & API Integration", "passed": true, "attempts": 2}, {"day": 20, "title": "Conversation Memory & Context Management", "passed": true, "attempts": 3}, {"day": 22, "title": "Multi-Agent Orchestration", "passed": true, "attempts": 4}, {"day": 23, "title": "Model Context Protocol (MCP)", "passed": true, "attempts": 5}, {"day": 28, "title": "Docker & Kubernetes Deployment", "skipped": true}, {"day": 31, "title": "Capstone Project & Final Demo", "passed": true, "attempts": 2}]}, {"id": "CAND-005", "name": "Michael Brown", "role": "DevOps Engineer", "years": 10, "missions": [{"day": 7, "title": "Embeddings Explained", "passed": true, "attempts": 2}, {"day": 8, "title": "Vector Databases Overview", "passed": true, "attempts": 2}, {"day": 10, "title": "Retrieval & Matching Engine", "passed": true, "attempts": 2}, {"day": 12, "title": "Prompt Engineering Fundamentals", "passed": true, "attempts": 4}, {"day": 18, "title": "Streaming Responses", "passed": true, "attempts": 1}, {"day": 22, "title": "Multi-Agent Orchestration", "passed": true, "attempts": 2}, {"day": 23, "title": "Model Context Protocol (MCP)", "passed": true, "attempts": 3}, {"day": 28, "title": "Docker & Kubernetes Deployment", "passed": true, "attempts": 1}, {"day": 29, "title": "Monitoring, Logging & Observability", "passed": true, "attempts": 1}, {"day": 31, "title": "Capstone Project & Final Demo", "passed": true, "attempts": 1}]}, {"id": "CAND-006", "name": "Wendy Foster", "role": "Marketing Manager", "years": 12, "missions": [{"day": 1, "title": "VS Code & Python Environment Setup", "passed": true, "attempts": 3}, {"day": 7, "title": "Embeddings Explained", "passed": true, "attempts": 5}, {"day": 8, "title": "Vector Databases Overview", "passed": true, "attempts": 5}, {"day": 12, "title": "Prompt Engineering Fundamentals", "passed": true, "attempts": 4}, {"day": 16, "title": "Chatbot Backend & API Integration", "passed": true, "attempts": 4}, {"day": 17, "title": "Chatbot Frontend Development", "passed": true, "attempts": 2}, {"day": 22, "title": "Multi-Agent Orchestration", "passed": true, "attempts": 5}, {"day": 27, "title": "Security, Privacy & Guardrails", "skipped": true}, {"day": 28, "title": "Docker & Kubernetes Deployment", "skipped": true}, {"day": 31, "title": "Capstone Project & Final Demo", "passed": true, "attempts": 3}]}, {"id": "CAND-007", "name": "Ethan Brooks", "role": "Computer Science Intern", "years": 0, "missions": [{"day": 1, "title": "VS Code & Python Environment Setup", "passed": true, "attempts": 1}, {"day": 3, "title": "First AI Project, React Frontend & GitHub", "passed": true, "attempts": 1}, {"day": 7, "title": "Embeddings Explained", "passed": true, "attempts": 2}, {"day": 8, "title": "Vector Databases Overview", "passed": true, "attempts": 1}, {"day": 12, "title": "Prompt Engineering Fundamentals", "passed": true, "attempts": 1}, {"day": 16, "title": "Chatbot Backend & API Integration", "passed": true, "attempts": 1}, {"day": 22, "title": "Multi-Agent Orchestration", "passed": true, "attempts": 1}, {"day": 27, "title": "Security, Privacy & Guardrails", "skipped": true}, {"day": 28, "title": "Docker & Kubernetes Deployment", "skipped": true}, {"day": 31, "title": "Capstone Project & Final Demo", "passed": true, "attempts": 2}]}, {"id": "CAND-008", "name": "Harold Whitfield", "role": "Distinguished Engineer", "years": 28, "missions": [{"day": 1, "title": "VS Code & Python Environment Setup", "passed": true, "attempts": 1}, {"day": 4, "title": "Reading & Processing Structured Data", "passed": true, "attempts": 1}, {"day": 5, "title": "Reading & Processing Unstructured Data", "passed": true, "attempts": 1}, {"day": 14, "title": "Fine-Tuning: Concepts & When to Use It", "skipped": true}, {"day": 15, "title": "Fine-Tuning: Hands-On with LoRA & QLoRA", "skipped": true}, {"day": 21, "title": "LangChain Agents", "passed": true, "attempts": 5}, {"day": 22, "title": "Multi-Agent Orchestration", "passed": true, "attempts": 4}, {"day": 23, "title": "Model Context Protocol (MCP)", "passed": true, "attempts": 5}, {"day": 27, "title": "Security, Privacy & Guardrails", "passed": true, "attempts": 1}, {"day": 28, "title": "Docker & Kubernetes Deployment", "passed": true, "attempts": 1}, {"day": 31, "title": "Capstone Project & Final Demo", "passed": true, "attempts": 2}]}, {"id": "CAND-009", "name": "Zara Ahmadi", "role": "AI Engineer", "years": 1, "missions": [{"day": 7, "title": "Embeddings Explained", "passed": true, "attempts": 1}, {"day": 8, "title": "Vector Databases Overview", "passed": true, "attempts": 1}, {"day": 10, "title": "Retrieval & Matching Engine", "passed": true, "attempts": 1}, {"day": 12, "title": "Prompt Engineering Fundamentals", "passed": true, "attempts": 1}, {"day": 13, "title": "Function Calling & Structured Outputs", "passed": true, "attempts": 1}, {"day": 21, "title": "LangChain Agents", "passed": true, "attempts": 1}, {"day": 22, "title": "Multi-Agent Orchestration", "passed": true, "attempts": 1}, {"day": 23, "title": "Model Context Protocol (MCP)", "passed": true, "attempts": 1}, {"day": 27, "title": "Security, Privacy & Guardrails", "passed": true, "attempts": 1}, {"day": 31, "title": "Capstone Project & Final Demo", "passed": true, "attempts": 1}]}, {"id": "CAND-010", "name": "Gerald Combs", "role": "IT Support Specialist", "years": 20, "missions": [{"day": 1, "title": "VS Code & Python Environment Setup", "passed": true, "attempts": 2}, {"day": 7, "title": "Embeddings Explained", "passed": true, "attempts": 5}, {"day": 8, "title": "Vector Databases Overview", "passed": false, "attempts": 4}, {"day": 10, "title": "Retrieval & Matching Engine", "passed": false, "attempts": 3}, {"day": 12, "title": "Prompt Engineering Fundamentals", "passed": true, "attempts": 5}, {"day": 16, "title": "Chatbot Backend & API Integration", "passed": true, "attempts": 4}, {"day": 22, "title": "Multi-Agent Orchestration", "passed": false, "attempts": 3}, {"day": 27, "title": "Security, Privacy & Guardrails", "skipped": true}, {"day": 28, "title": "Docker & Kubernetes Deployment", "skipped": true}, {"day": 31, "title": "Capstone Project & Final Demo", "passed": true, "attempts": 3}]}, {"id": "CAND-011", "name": "Mia Alvarez", "role": "UX Researcher", "years": 6, "missions": [{"day": 1, "title": "VS Code & Python Environment Setup", "passed": true, "attempts": 2}, {"day": 2, "title": "Local LLM & AI Coding Assistant Setup", "passed": true, "attempts": 1}, {"day": 3, "title": "First AI Project, React Frontend & GitHub", "passed": true, "attempts": 3}, {"day": 4, "title": "Reading & Processing Structured Data", "passed": true, "attempts": 2}, {"day": 7, "title": "Embeddings Explained", "skipped": true}, {"day": 8, "title": "Vector Databases Overview", "skipped": true}, {"day": 12, "title": "Prompt Engineering Fundamentals", "skipped": true}, {"day": 16, "title": "Chatbot Backend & API Integration", "skipped": true}, {"day": 22, "title": "Multi-Agent Orchestration", "skipped": true}, {"day": 31, "title": "Capstone Project & Final Demo", "passed": true, "attempts": 4}]}, {"id": "CAND-012", "name": "Chen Wei", "role": "Mobile App Developer", "years": 7, "missions": [{"day": 7, "title": "Embeddings Explained", "passed": true, "attempts": 4}, {"day": 8, "title": "Vector Databases Overview", "passed": true, "attempts": 5}, {"day": 9, "title": "Building & Populating the Vector Database", "passed": true, "attempts": 4}, {"day": 10, "title": "Retrieval & Matching Engine", "passed": true, "attempts": 4}, {"day": 16, "title": "Chatbot Backend & API Integration", "passed": true, "attempts": 1}, {"day": 18, "title": "Streaming Responses", "passed": true, "attempts": 1}, {"day": 22, "title": "Multi-Agent Orchestration", "passed": true, "attempts": 2}, {"day": 28, "title": "Docker & Kubernetes Deployment", "passed": true, "attempts": 1}, {"day": 30, "title": "Production Readiness & Final Testing", "passed": true, "attempts": 1}, {"day": 31, "title": "Capstone Project & Final Demo", "passed": true, "attempts": 1}]}, {"id": "CAND-013", "name": "Ravi Patel", "role": "Software Engineer", "years": 15, "missions": [{"day": 1, "title": "VS Code & Python Environment Setup", "passed": true, "attempts": 3}, {"day": 4, "title": "Reading & Processing Structured Data", "passed": true, "attempts": 2}, {"day": 7, "title": "Embeddings Explained", "passed": true, "attempts": 3}, {"day": 8, "title": "Vector Databases Overview", "passed": true, "attempts": 2}, {"day": 12, "title": "Prompt Engineering Fundamentals", "passed": true, "attempts": 3}, {"day": 16, "title": "Chatbot Backend & API Integration", "passed": true, "attempts": 2}, {"day": 22, "title": "Multi-Agent Orchestration", "passed": true, "attempts": 2}, {"day": 27, "title": "Security, Privacy & Guardrails", "passed": true, "attempts": 1}, {"day": 28, "title": "Docker & Kubernetes Deployment", "passed": true, "attempts": 1}, {"day": 31, "title": "Capstone Project & Final Demo", "passed": true, "attempts": 1}]}, {"id": "CAND-014", "name": "Bethany Cole", "role": "HR Manager", "years": 10, "missions": [{"day": 1, "title": "VS Code & Python Environment Setup", "passed": true, "attempts": 4}, {"day": 7, "title": "Embeddings Explained", "passed": true, "attempts": 5}, {"day": 8, "title": "Vector Databases Overview", "skipped": true}, {"day": 12, "title": "Prompt Engineering Fundamentals", "passed": true, "attempts": 5}, {"day": 16, "title": "Chatbot Backend & API Integration", "passed": true, "attempts": 4}, {"day": 20, "title": "Conversation Memory & Context Management", "passed": true, "attempts": 3}, {"day": 22, "title": "Multi-Agent Orchestration", "skipped": true}, {"day": 27, "title": "Security, Privacy & Guardrails", "skipped": true}, {"day": 28, "title": "Docker & Kubernetes Deployment", "skipped": true}, {"day": 31, "title": "Capstone Project & Final Demo", "passed": true, "attempts": 4}]}, {"id": "CAND-015", "name": "Noah Kim", "role": "Principal Architect", "years": 20, "missions": [{"day": 1, "title": "VS Code & Python Environment Setup", "passed": true, "attempts": 1}, {"day": 7, "title": "Embeddings Explained", "passed": true, "attempts": 1}, {"day": 8, "title": "Vector Databases Overview", "passed": true, "attempts": 1}, {"day": 14, "title": "Fine-Tuning: Concepts & When to Use It", "skipped": true}, {"day": 15, "title": "Fine-Tuning: Hands-On with LoRA & QLoRA", "skipped": true}, {"day": 21, "title": "LangChain Agents", "passed": true, "attempts": 1}, {"day": 22, "title": "Multi-Agent Orchestration", "passed": true, "attempts": 1}, {"day": 23, "title": "Model Context Protocol (MCP)", "passed": true, "attempts": 1}, {"day": 27, "title": "Security, Privacy & Guardrails", "passed": true, "attempts": 1}, {"day": 31, "title": "Capstone Project & Final Demo", "passed": true, "attempts": 1}]}, {"id": "CAND-016", "name": "Isabella Rossi", "role": "Software Engineer", "years": 5, "missions": [{"day": 1, "title": "VS Code & Python Environment Setup", "passed": true, "attempts": 2}, {"day": 7, "title": "Embeddings Explained", "passed": false, "attempts": 4}, {"day": 8, "title": "Vector Databases Overview", "passed": true, "attempts": 3}, {"day": 12, "title": "Prompt Engineering Fundamentals", "passed": false, "attempts": 5}, {"day": 16, "title": "Chatbot Backend & API Integration", "passed": true, "attempts": 2}, {"day": 22, "title": "Multi-Agent Orchestration", "passed": false, "attempts": 4}, {"day": 27, "title": "Security, Privacy & Guardrails", "skipped": true}, {"day": 28, "title": "Docker & Kubernetes Deployment", "skipped": true}, {"day": 31, "title": "Capstone Project & Final Demo", "passed": true, "attempts": 2}]}, {"id": "CAND-017", "name": "Tyler Brooks", "role": "Junior Developer", "years": 0, "missions": [{"day": 1, "title": "VS Code & Python Environment Setup", "passed": true, "attempts": 3}, {"day": 3, "title": "First AI Project, React Frontend & GitHub", "passed": true, "attempts": 5}, {"day": 7, "title": "Embeddings Explained", "passed": true, "attempts": 5}, {"day": 8, "title": "Vector Databases Overview", "passed": true, "attempts": 5}, {"day": 10, "title": "Retrieval & Matching Engine", "passed": true, "attempts": 5}, {"day": 12, "title": "Prompt Engineering Fundamentals", "passed": true, "attempts": 5}, {"day": 16, "title": "Chatbot Backend & API Integration", "passed": true, "attempts": 4}, {"day": 22, "title": "Multi-Agent Orchestration", "passed": true, "attempts": 5}, {"day": 28, "title": "Docker & Kubernetes Deployment", "passed": true, "attempts": 4}, {"day": 31, "title": "Capstone Project & Final Demo", "passed": true, "attempts": 3}]}, {"id": "CAND-018", "name": "Diane Foster", "role": "AI Engineer", "years": 4, "missions": [{"day": 7, "title": "Embeddings Explained", "passed": true, "attempts": 1}, {"day": 8, "title": "Vector Databases Overview", "passed": true, "attempts": 1}, {"day": 10, "title": "Retrieval & Matching Engine", "passed": true, "attempts": 1}, {"day": 12, "title": "Prompt Engineering Fundamentals", "passed": true, "attempts": 1}, {"day": 13, "title": "Function Calling & Structured Outputs", "passed": true, "attempts": 1}, {"day": 22, "title": "Multi-Agent Orchestration", "passed": true, "attempts": 1}, {"day": 23, "title": "Model Context Protocol (MCP)", "passed": true, "attempts": 1}, {"day": 27, "title": "Security, Privacy & Guardrails", "passed": true, "attempts": 1}, {"day": 28, "title": "Docker & Kubernetes Deployment", "passed": true, "attempts": 1}, {"day": 31, "title": "Capstone Project & Final Demo", "passed": true, "attempts": 1}]}, {"id": "CAND-019", "name": "Frank DeLuca", "role": "Legacy Systems Engineer", "years": 25, "missions": [{"day": 1, "title": "VS Code & Python Environment Setup", "passed": true, "attempts": 2}, {"day": 4, "title": "Reading & Processing Structured Data", "passed": true, "attempts": 1}, {"day": 7, "title": "Embeddings Explained", "passed": true, "attempts": 4}, {"day": 8, "title": "Vector Databases Overview", "passed": true, "attempts": 3}, {"day": 16, "title": "Chatbot Backend & API Integration", "passed": true, "attempts": 1}, {"day": 17, "title": "Chatbot Frontend Development", "passed": true, "attempts": 5}, {"day": 19, "title": "Response Formatting & Rich Outputs", "passed": true, "attempts": 4}, {"day": 22, "title": "Multi-Agent Orchestration", "passed": true, "attempts": 3}, {"day": 28, "title": "Docker & Kubernetes Deployment", "passed": true, "attempts": 1}, {"day": 31, "title": "Capstone Project & Final Demo", "passed": true, "attempts": 2}]}, {"id": "CAND-020", "name": "Priyanka Sharma", "role": "Software Engineer", "years": 5, "missions": [{"day": 1, "title": "VS Code & Python Environment Setup", "passed": true, "attempts": 1}, {"day": 3, "title": "First AI Project, React Frontend & GitHub", "passed": true, "attempts": 1}, {"day": 4, "title": "Reading & Processing Structured Data", "skipped": true}, {"day": 7, "title": "Embeddings Explained", "passed": false, "attempts": 2}, {"day": 8, "title": "Vector Databases Overview", "skipped": true}, {"day": 12, "title": "Prompt Engineering Fundamentals", "passed": true, "attempts": 1}, {"day": 16, "title": "Chatbot Backend & API Integration", "passed": true, "attempts": 1}, {"day": 22, "title": "Multi-Agent Orchestration", "passed": true, "attempts": 1}, {"day": 27, "title": "Security, Privacy & Guardrails", "passed": true, "attempts": 1}, {"day": 31, "title": "Capstone Project & Final Demo", "passed": true, "attempts": 1}]}], "days": [{"day": 1, "title": "VS Code & Python Environment Setup", "type": "SETUP", "tools": ["VS Code", "Python"], "obj": "Install VS Code and Python on your machine"}, {"day": 2, "title": "Local LLM & AI Coding Assistant Setup", "type": "SETUP", "tools": ["Ollama", "Qwen2.5-Coder"], "obj": "Install Ollama and download a local coding model"}, {"day": 3, "title": "First AI Project, React Frontend & GitHub", "type": "BUILD", "tools": ["Python", "Ollama"], "obj": "Build a command-line chatbot powered by your local Ollama model"}, {"day": 4, "title": "Reading & Processing Structured Data", "type": "BUILD", "tools": ["Pandas", "SQLite"], "obj": "Create synthetic healthcare plans and claims datasets"}, {"day": 5, "title": "Reading & Processing Unstructured Data", "type": "BUILD", "tools": ["pdfplumber", "PyPDF"], "obj": "Extract text from healthcare PDFs and Word documents"}, {"day": 6, "title": "Building the Knowledge Base", "type": "BUILD", "tools": ["LangChain Text Splitters", "JSONL"], "obj": "Convert structured and unstructured healthcare data into a unified knowledge base"}, {"day": 7, "title": "Embeddings Explained", "type": "AI_CORE", "tools": ["Sentence Transformers", "OpenAI Embeddings"], "obj": "Understand how text is converted into vector embeddings"}, {"day": 8, "title": "Vector Databases Overview", "type": "BUILD", "tools": ["ChromaDB", "Pinecone"], "obj": "Learn the role of vector databases in RAG applications"}, {"day": 9, "title": "Building & Populating the Vector Database", "type": "BUILD", "tools": ["ChromaDB", "Sentence Transformers"], "obj": "Load knowledge base embeddings into the vector database"}, {"day": 10, "title": "The Retrieval & Matching Engine", "type": "SHIP_IT", "tools": ["SQLite", "ChromaDB"], "obj": "Build a query router that decides between SQL, vector search, or hybrid retrieval"}, {"day": 11, "title": "RAG End-to-End & LLM API Basics", "type": "BUILD", "tools": ["OpenAI SDK", "Ollama"], "obj": "Connect the retrieval engine to an LLM to build a complete RAG pipeline"}, {"day": 12, "title": "Prompt Engineering Fundamentals", "type": "LEARN", "tools": ["LLMs", "Prompt Templates"], "obj": "Understand zero-shot, few-shot, and chain-of-thought prompting"}, {"day": 13, "title": "Advanced Prompting: Function Calling & Structured Outputs", "type": "BUILD", "tools": ["OpenAI Function Calling", "Pydantic"], "obj": "Define tool schemas for healthcare-related chatbot functions"}, {"day": 14, "title": "Fine-Tuning: Concepts & When to Use It", "type": "LEARN", "tools": ["JSONL", "OpenAI"], "obj": "Understand when fine-tuning is more appropriate than prompting or RAG"}, {"day": 15, "title": "Fine-Tuning: Hands-On with LoRA & QLoRA", "type": "SHIP_IT", "tools": ["PEFT", "Transformers"], "obj": "Train or fine-tune an LLM using LoRA or the OpenAI fine-tuning workflow"}, {"day": 16, "title": "Chatbot Backend & API Integration", "type": "BUILD", "tools": ["FastAPI", "SQLite"], "obj": "Create a /chat API endpoint for the healthcare chatbot"}, {"day": 17, "title": "Chatbot Frontend Development", "type": "BUILD", "tools": ["Streamlit", "Requests"], "obj": "Build an interactive chat interface for the chatbot"}, {"day": 18, "title": "Full-Stack Integration & Streaming Responses", "type": "BUILD", "tools": ["FastAPI", "StreamingResponse"], "obj": "Implement real-time streaming responses from the LLM"}, {"day": 19, "title": "Response Formatting & Rich Outputs", "type": "BUILD", "tools": ["Pydantic", "Markdown"], "obj": "Add citations to chatbot responses using retrieved knowledge"}, {"day": 20, "title": "Conversation Memory & Context Management", "type": "SHIP_IT", "tools": ["SQLite", "FastAPI"], "obj": "Persist conversation history across multiple user sessions"}, {"day": 21, "title": "Agentic Frameworks: LangChain Agents & Tool Use", "type": "BUILD", "tools": ["LangChain", "LangChain Agents"], "obj": "Convert function-calling workflows into a reasoning agent"}, {"day": 22, "title": "Multi-Agent Orchestration", "type": "BUILD", "tools": ["CrewAI", "LangGraph"], "obj": "Create specialized agents for different healthcare domains"}, {"day": 23, "title": "Model Context Protocol (MCP)", "type": "BUILD", "tools": ["MCP Python SDK", "Claude Desktop"], "obj": "Understand the purpose of the Model Context Protocol"}, {"day": 24, "title": "Agentic Chatbot Integration", "type": "SHIP_IT", "tools": ["LangChain", "MCP"], "obj": "Integrate agents, MCP tools, retrieval, and conversation memory"}, {"day": 25, "title": "Chatbot Evaluation & Testing", "type": "SHIP_IT", "tools": ["Python", "Evaluation Dataset"], "obj": "Create a benchmark dataset covering representative healthcare questions"}, {"day": 26, "title": "Performance Optimization & Cost Management", "type": "OPTIMIZE", "tools": ["tiktoken", "Python"], "obj": "Measure token usage across the chatbot pipeline"}, {"day": 27, "title": "Security, Privacy & Guardrails", "type": "BUILD", "tools": ["FastAPI", "Python"], "obj": "Secure chatbot APIs against unauthorized access"}, {"day": 28, "title": "Docker & Kubernetes Deployment", "type": "SHIP_IT", "tools": ["Docker", "Kubernetes"], "obj": "Containerize the chatbot backend and frontend using Docker"}, {"day": 29, "title": "Monitoring, Logging & Observability", "type": "BUILD", "tools": ["Python Logging", "Prometheus"], "obj": "Add structured logging throughout the chatbot pipeline"}, {"day": 30, "title": "Production Readiness & Final Testing", "type": "SHIP_IT", "tools": ["FastAPI", "Docker"], "obj": "Perform complete end-to-end testing of the chatbot"}, {"day": 31, "title": "Capstone Project & Final Demo", "type": "CAPSTONE", "tools": ["FastAPI", "React"], "obj": "Demonstrate the complete enterprise healthcare chatbot"}]};
+
+const daysByNum = {};
+DATA.days.forEach(d => daysByNum[d.day] = d);
+
+const TIER_ORDER = {failed:0, skipped:1, struggled:2, solid:3, first_try:4};
+
+function tierFor(m){
+  if(m.skipped) return "skipped";
+  if(m.passed === false) return "failed";
+  if(m.passed === true){
+    if(m.attempts != null && m.attempts >= 3) return "struggled";
+    if(m.attempts === 1) return "first_try";
+    return "solid";
+  }
+  return "solid";
+}
+
+function buildPlan(cand){
+  const plan = cand.missions.map(m => ({
+    day:m.day, title:m.title, tier:tierFor(m), attempts:m.attempts,
+    curriculum: daysByNum[m.day]
+  }));
+  plan.sort((a,b) => (TIER_ORDER[a.tier]-TIER_ORDER[b.tier]) || (a.day-b.day));
+  return plan;
+}
+
+function selectTopics(plan, minDays=5){
+  if(plan.length <= minDays) return plan.slice();
+  const failed = plan.filter(p => p.tier === "failed");
+  const rest = plan.filter(p => p.tier !== "failed");
+  const selected = failed.slice();
+  for(const p of rest){
+    if(selected.length >= minDays) break;
+    selected.push(p);
+  }
+  selected.sort((a,b) => a.day-b.day);
+  return selected;
+}
+
+// ---------------- Leaderboard: course performance ----------------
+// Pure cohort-signal score — nothing here depends on a live interview ever
+// happening. Rewards completing missions on the first attempt, penalizes
+// failed/skipped missions harder than "took a few tries."
+function computeCoursePerformance(cand){
+  const missions = cand.missions;
+  const total = missions.length || 1;
+  const passed = missions.filter(m => m.passed === true);
+  const failed = missions.filter(m => m.passed === false);
+  const skipped = missions.filter(m => m.skipped);
+  const avgAttempts = passed.length ? passed.reduce((s,m) => s + (m.attempts || 1), 0) / passed.length : 0;
+  const completionScore = (passed.length / total) * 70; // up to 70 pts for getting missions done
+  const efficiencyScore = passed.length ? Math.max(0, 20 - (avgAttempts - 1) * 5) : 0; // up to 20 pts, decays with attempts
+  const penalty = failed.length * 8 + skipped.length * 4;
+  const score = Math.max(0, Math.min(100, Math.round(completionScore + efficiencyScore - penalty)));
+  return { score, passedCount: passed.length, failedCount: failed.length, skippedCount: skipped.length, avgAttempts };
+}
+
+// ---------------- Leaderboard: role fit ----------------
+// There's no separate "job description" field in this dataset — only a role
+// title (e.g. "DevOps Engineer") and years of experience — so fit is estimated
+// by matching keywords in that role title against each curriculum day's tools/
+// title/objective, then weighting the candidate's performance on matched days
+// higher than unrelated ones. It's a heuristic signal, not a hiring verdict.
+const ROLE_FIT_KEYWORDS = [
+  { match: /data engineer|data analyst|\bdata\b/i, tags: ["vector","sql","sqlite","pandas","embedding","retrieval","chromadb","pinecone","structured","dataset","hybrid"] },
+  { match: /devops|site reliability|\bsre\b|infrastructure/i, tags: ["docker","kubernetes","monitoring","observability","logging","deployment","production","prometheus"] },
+  { match: /\bai\b|machine learning|\bml\b|data scien/i, tags: ["embedding","agent","langchain","mcp","prompt","rag","fine-tun","vector","llm"] },
+  { match: /mobile|frontend|front-end|\bux\b|react|app developer/i, tags: ["react","streamlit","frontend","response formatting","streaming","interface"] },
+  { match: /support|helpdesk|\bit\b/i, tags: ["setup","security","guardrails","logging","docker"] },
+  { match: /business|marketing|\bhr\b|manager/i, tags: ["prompt","chatbot frontend","conversation memory","capstone","response formatting"] },
+  { match: /architect|distinguished|principal|legacy/i, tags: ["agent","mcp","security","deployment","orchestration"] },
+  { match: /intern|junior/i, tags: ["setup","first project","github","fundamentals","environment"] },
+  { match: /backend|software|developer|engineer/i, tags: ["api","fastapi","backend","docker","streaming","function calling"] }
+];
+const ROLE_FIT_TIER_SCORE = { first_try: 1, solid: 0.85, struggled: 0.6, skipped: 0, failed: 0 };
+
+function relevantTagsForRole(role){
+  const tags = new Set();
+  ROLE_FIT_KEYWORDS.forEach(g => { if(g.match.test(role)) g.tags.forEach(t => tags.add(t)); });
+  if(tags.size === 0){ ["api","embedding","prompt","docker","agent"].forEach(t => tags.add(t)); } // generic fallback
+  return tags;
+}
+
+function computeRoleFit(cand){
+  const tags = relevantTagsForRole(cand.role);
+  let weightedSum = 0, weightTotal = 0;
+  cand.missions.forEach(m => {
+    const day = daysByNum[m.day];
+    const tier = tierFor(m);
+    const tierScore = ROLE_FIT_TIER_SCORE[tier] != null ? ROLE_FIT_TIER_SCORE[tier] : 0.5;
+    const dayText = day ? `${day.title} ${day.tools.join(" ")} ${day.obj} ${day.type}`.toLowerCase() : m.title.toLowerCase();
+    let relevance = 0.4; // baseline — every topic still counts a little even if off-role
+    for(const t of tags){ if(dayText.includes(t)){ relevance = 1.6; break; } }
+    weightedSum += relevance * tierScore;
+    weightTotal += relevance;
+  });
+  return weightTotal ? Math.round((weightedSum / weightTotal) * 100) : 0;
+}
+
+function fitTierClass(fit){
+  if(fit >= 75) return "high";
+  if(fit >= 50) return "mid";
+  return "low";
+}
+
+let leaderboardTab = "performance";
+
+function showLeaderboard(){
+  stopCamera(true);
+  session = null;
+  document.querySelectorAll(".cand-card").forEach(el => el.classList.remove("active"));
+  leaderboardTab = "performance";
+  renderLeaderboardStage();
+}
+
+function renderLeaderboardStage(){
+  const stage = document.getElementById("stage");
+  const rows = DATA.candidates.map(c => ({ cand: c, perf: computeCoursePerformance(c), fit: computeRoleFit(c) }));
+
+  stage.innerHTML = `
+    <div class="stage-header">
+      <div class="stage-header-top">
+        <div>
+          <h2>Cohort Leaderboard</h2>
+          <div class="role">${DATA.candidates.length} candidates</div>
+        </div>
+      </div>
+      <div class="lb-tabs">
+        <button class="lb-tab ${leaderboardTab === 'performance' ? 'active' : ''}" data-tab="performance">Performance Leaderboard</button>
+        <button class="lb-tab ${leaderboardTab === 'rolefit' ? 'active' : ''}" data-tab="rolefit">Role Fit Chart</button>
+      </div>
+    </div>
+    <div class="report" id="lb-body"></div>
+  `;
+  stage.querySelectorAll(".lb-tab").forEach(btn => {
+    btn.addEventListener("click", () => { leaderboardTab = btn.dataset.tab; renderLeaderboardStage(); });
+  });
+  const body = document.getElementById("lb-body");
+  if(leaderboardTab === "performance") renderPerformanceLeaderboard(body, rows);
+  else renderRoleFitChart(body, rows);
+}
+
+function renderPerformanceLeaderboard(container, rows){
+  const sorted = [...rows].sort((a,b) => b.perf.score - a.perf.score);
+  container.innerHTML = `
+    <p class="lb-note">Score blends mission completion, first-attempt efficiency, and penalties for failed/skipped missions across the 31-day cohort curriculum. This reflects course performance only — it doesn't factor in any live interview. Click a candidate to start their interview.</p>
+    <div class="lb-list">
+      ${sorted.map((r, i) => `
+        <div class="lb-row" data-id="${r.cand.id}">
+          <div class="lb-rank ${i < 3 ? 'top' : ''}">#${i + 1}</div>
+          <div class="lb-main">
+            <div class="lb-name">${r.cand.name}</div>
+            <div class="lb-role">${r.cand.role} · ${r.cand.years}y exp</div>
+          </div>
+          <div class="lb-stats">
+            <span class="lb-stat pass">${r.perf.passedCount} passed</span>
+            ${r.perf.failedCount ? `<span class="lb-stat fail">${r.perf.failedCount} failed</span>` : ""}
+            ${r.perf.skippedCount ? `<span class="lb-stat skip">${r.perf.skippedCount} skipped</span>` : ""}
+          </div>
+          <div class="lb-score-wrap">
+            <div class="lb-score-bar"><div class="lb-score-fill" style="width:${r.perf.score}%"></div></div>
+            <div class="lb-score-num">${r.perf.score}</div>
+          </div>
+        </div>
+      `).join("")}
+    </div>
+  `;
+  container.querySelectorAll(".lb-row").forEach(row => {
+    row.addEventListener("click", () => selectCandidate(row.dataset.id));
+  });
+}
+
+function renderRoleFitChart(container, rows){
+  const sorted = [...rows].sort((a,b) => b.fit - a.fit);
+  container.innerHTML = `
+    <p class="lb-note">Estimated fit between each candidate's cohort performance and the curriculum topics most relevant to their role title. There's no separate job-description text in this data, so relevance is inferred from keywords in the role title matched against each day's tools/objective — treat this as a rough signal, not a hiring decision. Click a bar to start that candidate's interview.</p>
+    <div class="chart-list">
+      ${sorted.map(r => `
+        <div class="chart-row" data-id="${r.cand.id}">
+          <div class="chart-label">
+            <span class="chart-name">${r.cand.name}</span>
+            <span class="chart-role">${r.cand.role}</span>
+          </div>
+          <div class="chart-bar-track">
+            <div class="chart-bar-fill ${fitTierClass(r.fit)}" style="width:${r.fit}%"></div>
+          </div>
+          <div class="chart-value">${r.fit}%</div>
+        </div>
+      `).join("")}
+    </div>
+  `;
+  container.querySelectorAll(".chart-row").forEach(row => {
+    row.addEventListener("click", () => selectCandidate(row.dataset.id));
+  });
+}
+
+// ---------------- Fallback templates (used only if the live API call fails) ----------------
+const QUESTION_TEMPLATES = {
+  failed: t => `I want to start here — this one didn't pass on the assessment. In your own words, what's actually going on with ${t.title.toLowerCase()}? Walk me through the core idea using ${t.curriculum ? t.curriculum.tools[0] : "the tools you had"}.`,
+  skipped: t => `You skipped Day ${t.day} — ${t.title}. Even without the hands-on practice, can you reason through it conceptually? What problem is it solving?`,
+  struggled: t => `It took ${t.attempts} attempts to get ${t.title.toLowerCase()} passing. What was the part that took the longest to click, and what changed once it did?`,
+  solid: t => `Tell me about how you approached ${t.title.toLowerCase()}. What tradeoffs did you weigh with ${t.curriculum ? t.curriculum.tools[0] : "the tools involved"}?`,
+  first_try: t => `You got ${t.title.toLowerCase()} on the first try. Let's go a level deeper — what's a subtlety about ${t.curriculum ? t.curriculum.tools[0] : "that topic"} that most people miss?`
+};
+const FALLBACK_FOLLOWUPS = {
+  failed: "Can you give a concrete example of where that would actually matter, even a rough one from a personal project?",
+  struggled: "What would you do differently if you were doing that one again today?"
+};
+const GAP_NEXT = {
+  failed: t => `Revisit ${t.title} fundamentals before the next round — this one didn't land yet.`,
+  skipped: t => `Complete ${t.title} hands-on rather than relying on conceptual reasoning alone.`,
+  struggled: t => `Get more reps on ${t.title} to build fluency without needing ${t.attempts} attempts.`
+};
+
+// ---------------- Offline heuristic judge (no API calls at all) ----------------
+// Deliberately simple and transparent about being simple: word count + keyword
+// overlap with the topic's curriculum terms, plus a few "I don't know" phrases.
+// This is NOT real technical grading — it can't verify factual correctness —
+// but it's free and works with zero network access, unlike the live judge.
+const DONT_KNOW_PHRASES = [
+  "i don't know", "i dont know", "not sure", "no idea", "not familiar",
+  "i'm not sure", "im not sure", "no clue", "can't recall", "cant recall",
+  "not certain", "unsure"
+];
+
+function offlineExpectedTerms(topic){
+  const fromTools = (topic.curriculum && topic.curriculum.tools) ? topic.curriculum.tools : [];
+  const fromTitle = topic.title.split(/\s+/).filter(w => w.length > 4);
+  return Array.from(new Set([...fromTools, ...fromTitle].map(w => w.toLowerCase())));
+}
+
+function offlineJudgeTurn(session, topic, isLast){
+  const lastUser = [...session.transcript].reverse().find(m => m.role === "user");
+  const answer = (lastUser ? lastUser.content : "").trim();
+  const lower = answer.toLowerCase();
+  const wordCount = answer ? answer.split(/\s+/).length : 0;
+  const expected = offlineExpectedTerms(topic);
+  const matched = expected.filter(term => lower.includes(term));
+  const matchRatio = expected.length ? matched.length / expected.length : 1;
+
+  let verdict, review;
+  const saidDontKnow = DONT_KNOW_PHRASES.some(p => lower.includes(p));
+
+  if(!answer || saidDontKnow || wordCount < 4){
+    verdict = "incorrect";
+    review = `That didn't give me enough to go on for ${topic.title.toLowerCase()}. ` +
+      `(Offline heuristic check — this only looks at answer length and keywords, it can't verify technical accuracy.) ` +
+      `For reference, this topic centers on: ${topic.curriculum ? topic.curriculum.obj : topic.title}` +
+      (expected.length ? `, touching on ${expected.slice(0,3).join(", ")}.` : ".");
+  } else if(wordCount < 12 || matchRatio < 0.34){
+    verdict = "partial";
+    review = `That's a start, but it's pretty thin for ${topic.title.toLowerCase()} — ` +
+      `(offline heuristic check, not full AI grading) it didn't clearly touch on ` +
+      (expected.length ? `${expected.slice(0,3).join(", ")}. ` : "the core mechanics here. ") +
+      `Worth expanding on ${topic.curriculum ? topic.curriculum.obj : "the underlying idea"} with a concrete example.`;
+  } else {
+    verdict = "correct";
+    review = "";
+  }
+
+  let action;
+  if(verdict === "incorrect" || verdict === "partial") action = "follow_up";
+  else action = isLast ? "wrap_up" : "ask_new_topic";
+
+  return { verdict, review, action, message: null }; // message=null -> advance()/finishInterview() use their own fallback text
+}
+
+
+// ---------------- Live Claude judging ----------------
+const RUBRIC = `Assess the candidate's answer across these dimensions:
+- Technical correctness: is what they said actually accurate for this topic?
+- Depth: are they reasoning from real understanding, or reciting surface-level terms?
+- Honesty signals: if they say "I don't know", hedge heavily, or give an answer that's flatly wrong, treat that as a confirmed gap — do not paper over it or grade generously out of politeness.
+- Communication: is the answer clear and specific, or vague?
+Grade harshly, not generously. Default to skepticism: an answer earns "correct" only if it is fully accurate AND
+reasonably complete — vague, hand-wavy, or buzzword-heavy answers are "partial" at best even if nothing stated is
+technically false. Do not round up borderline answers out of encouragement or politeness. Treat confident-sounding
+but shallow answers as a red flag, not a pass — surface-level fluency should not be mistaken for real understanding.
+Calibrate expectations to the candidate's stated role and experience level, but calibrating does not mean going
+easy: someone with more years of experience should be held to a higher bar, not a lower one.`;
+
+// ---------------- Standalone API key handling ----------------
+// Inside claude.ai's artifact viewer, fetch("https://api.anthropic.com/...")
+// is transparently proxied and authenticated — no key needed. Opened as a
+// plain .html file in a normal browser tab, that proxy doesn't exist, so we
+// fall back to a user-supplied key sent directly to the API. The key lives
+// only in memory for this tab (never written to localStorage/disk) since
+// this is a shareable static file and shouldn't persist secrets to it.
+let userApiKey = "";
+let offlineMode = true; // defaults on — this app is being run offline-only, no API calls at all unless explicitly turned off
+
+function setApiKeyStatus(text, cls){
+  const el = document.getElementById("api-key-status");
+  if(!el) return;
+  el.textContent = text;
+  el.className = "api-key-status" + (cls ? " " + cls : "");
+}
+
+function initApiKeyBox(){
+  const input = document.getElementById("api-key-input");
+  const btn = document.getElementById("api-key-save");
+  const offlineToggle = document.getElementById("offline-mode-toggle");
+  if(!input || !btn) return;
+
+  const applyOfflineState = () => {
+    input.disabled = offlineMode;
+    btn.disabled = offlineMode;
+    if(offlineMode){
+      setApiKeyStatus("Offline mode on — no API calls at all. Grading is a simple keyword/length heuristic, not real AI judging, so treat it as a rough signal only.", "set");
+    } else {
+      setApiKeyStatus(userApiKey ? "Key set for this tab. It's kept in memory only and never saved to disk." : "Leave blank when running inside a claude.ai chat — it's only needed if you opened this file directly in a browser.");
+    }
+  };
+  applyOfflineState(); // reflect the checkbox's default (checked) state on load
+
+  const save = () => {
+    userApiKey = input.value.trim();
+    if(userApiKey){
+      setApiKeyStatus("Key set for this tab. It's kept in memory only and never saved to disk.", "set");
+    } else {
+      setApiKeyStatus("Leave blank when running inside a claude.ai chat — it's only needed if you opened this file directly in a browser.");
+    }
+  };
+  btn.addEventListener("click", save);
+  input.addEventListener("keydown", e => { if(e.key === "Enter") save(); });
+
+  if(offlineToggle){
+    offlineToggle.addEventListener("change", () => {
+      offlineMode = offlineToggle.checked;
+      applyOfflineState();
+    });
+  }
+}
+
+async function callClaude(systemPrompt, messages){
+  // messages may carry extra local-only fields (e.g. isReview for rendering) —
+  // the Anthropic API rejects any keys beyond role/content, so strip to just those.
+  // Correction/review entries are shown to the user and saved locally, but are
+  // never sent back to the API: (1) the model already produced that judgement
+  // itself and doesn't need it echoed back, and (2) leaving them in can end a
+  // turn on an assistant message with no user reply after it, which this model
+  // rejects ("must end with a user message"). Filtering them out keeps the
+  // history properly alternating user/assistant.
+  const cleanMessages = messages.filter(m => !m.isReview).map(m => ({role: m.role, content: m.content}));
+  const headers = {"Content-Type": "application/json"};
+  if(userApiKey){
+    // Direct call from a browser tab, no claude.ai proxy involved.
+    headers["x-api-key"] = userApiKey;
+    headers["anthropic-version"] = "2023-06-01";
+    headers["anthropic-dangerous-direct-browser-access"] = "true";
+  }
+  const response = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers,
+    body: JSON.stringify({
+      model: "claude-sonnet-4-6",
+      max_tokens: 1000,
+      system: systemPrompt,
+      messages: cleanMessages
+    })
+  });
+  let data;
+  try{
+    data = await response.json();
+  } catch(e){
+    console.error(`callClaude: response wasn't valid JSON. HTTP status ${response.status} ${response.statusText}`);
+    throw new Error(`API response wasn't JSON (status ${response.status})`);
+  }
+  if(!data.content){
+    console.error(`callClaude: no "content" field. HTTP status ${response.status} ${response.statusText}. Full response: ${JSON.stringify(data)}`);
+    const reason = (data.error && (data.error.message || data.error.type)) || data.type || "no error detail in response";
+    throw new Error(`Unexpected API response (status ${response.status}): ${reason}`);
+  }
+  return data.content.map(b => b.text || "").join("\n");
+}
+
+function parseJSON(raw){
+  const cleaned = raw.replace(/```json/g, "").replace(/```/g, "").trim();
+  return JSON.parse(cleaned);
+}
+
+function topicContext(t){
+  const tierNote = {
+    failed: "The candidate did NOT pass this mission in the cohort — probe whether they now understand the gap, don't assume competence.",
+    skipped: "The candidate SKIPPED this mission entirely — probe lightly to see if they can still reason about it conceptually.",
+    struggled: `The candidate passed only after ${t.attempts} attempts — worth a follow-up if their first answer is thin.`,
+    solid: "The candidate passed this without excessive struggle.",
+    first_try: "The candidate passed this on the first attempt — likely a strength area; one solid question is enough."
+  }[t.tier];
+  return `Day ${t.day}: ${t.title}\nModule objective: ${t.curriculum ? t.curriculum.obj : "n/a"}\nRelevant tools: ${t.curriculum ? t.curriculum.tools.join(", ") : "n/a"}\n${tierNote}`;
+}
+
+function personaHeader(c){
+  return `You are an experienced technical interviewer conducting a structured interview for ${c.name}, who completed an AI engineering cohort and is being assessed for a ${c.role} role (${c.years} years experience). You only see what the candidate says in this conversation — do not invent facts about their background beyond what's given here.`;
+}
+
+function progressNote(session){
+  const covered = session.selected.slice(0, session.idx).map(t => t.title);
+  const remaining = session.selected.length - Math.max(session.idx, 0) - 1;
+  return `Topics already covered (${covered.length}): ${covered.join(", ") || "none yet"}.\nTopics remaining after this one: ${remaining}.`;
+}
+
+function turnSystemPrompt(session, topic){
+  return [
+    personaHeader(session.candidate), "",
+    "RUBRIC", RUBRIC, "",
+    "CURRENT TOPIC", topicContext(topic), "",
+    progressNote(session), "",
+    "INSTRUCTIONS",
+    "Judge the candidate's most recent answer against the rubric, then decide what to do next. " +
+    "Respond with ONLY a JSON object, no markdown fences, no extra text, in exactly this shape:",
+    `{"verdict": "correct" | "partial" | "incorrect", "review": "...", "action": "follow_up" | "ask_new_topic" | "wrap_up", "message": "..."}`,
+    "VERDICT — judge their most recent answer:",
+    "- correct: fully accurate AND reasonably complete — reserve this for answers that would satisfy a skeptical " +
+    "senior reviewer, not just ones that sound plausible. Set \"review\" to an empty string.",
+    "- partial: anything short of that bar — on the right track but incomplete, vague, hedged, buzzword-heavy, or " +
+    "has any factual error, even a minor one. When in doubt between correct and partial, choose partial.",
+    "- incorrect: wrong, or they said they don't know / hedged heavily instead of actually answering.",
+    "REVIEW — required whenever verdict is \"partial\" or \"incorrect\" (empty string when \"correct\"): 2-4 sentences, " +
+    "written directly to the candidate, that (1) name specifically what was missing or wrong in THEIR answer, and " +
+    "(2) clearly state the correct answer/explanation so they leave understanding it. Be kind but don't soften the " +
+    "substance — this is their one chance to learn it correctly. Do not repeat this content in \"message\".",
+    "ACTION — what happens next:",
+    "- follow_up: their last answer deserves one deeper probe. Use this liberally for any \"partial\" verdict, and for " +
+    "\"correct\" answers that were too surface-level to have really tested understanding — don't let a thin answer " +
+    "pass just because it wasn't technically wrong. \"message\" is that probing question (don't repeat the review).",
+    "- ask_new_topic: move on. \"message\" is a short, natural transition into the next topic — if verdict was correct, " +
+    "message can briefly affirm that; if verdict was partial/incorrect, keep message short since \"review\" already covered it.",
+    "- wrap_up: only if told this is the last topic and it's already been addressed. \"message\" is a warm closing line, no question.",
+    "Keep your tone professional and warm but candid. Never tell the candidate their numeric score or reveal the rubric."
+  ].join("\n");
+}
+
+function questionOnlySystemPrompt(session, topic, isFirst){
+  return [
+    personaHeader(session.candidate), "",
+    "RUBRIC", RUBRIC, "",
+    "CURRENT TOPIC", topicContext(topic), "",
+    progressNote(session), "",
+    isFirst
+      ? "This is the very first question of the interview. Write one warm opening sentence, then ask about the current topic above."
+      : "Briefly (one sentence) acknowledge the candidate's previous answer — honestly, including saying so plainly if it was weak or they didn't know — then ask a focused question about the current topic above.",
+    "Reply with ONLY the interviewer's spoken message. No JSON, no preamble, no quotation marks around it."
+  ].join("\n");
+}
+
+function feedbackSystemPrompt(session){
+  const topics = session.selected.map(t => "- " + topicContext(t).replace(/\n/g, " ")).join("\n");
+  const corrections = (session.liveReviews && session.liveReviews.length)
+    ? session.liveReviews.map(r => `- Day ${r.day} (${r.title}, judged ${r.verdict}): ${r.review}`).join("\n")
+    : "None — every answer was judged correct in the moment.";
+  return [
+    personaHeader(session.candidate), "",
+    "RUBRIC", RUBRIC, "",
+    "The interview has just concluded. Topics that were covered:", topics, "",
+    "Corrections already given to the candidate live during the interview (don't repeat these verbatim, but weigh them in your judgement):", corrections, "",
+    "Write final structured feedback based on the full transcript below. Be specific and example-backed — " +
+    "cite what the candidate actually said, not generic praise. If they didn't know an answer or got something " +
+    "wrong, name that plainly in 'gaps' rather than softening it. Grade harshly: a majority of solid, complete, " +
+    "well-reasoned answers is the bar for 'hire', not just an absence of glaring mistakes — a candidate who was " +
+    "mostly vague, needed heavy follow-up prompting to get anywhere, or had multiple partial/incorrect answers " +
+    "should land at 'leaning_no' or 'no_hire', not a lukewarm 'hire'. Reserve 'strong_hire' for genuinely excellent, " +
+    "consistently deep performances, not merely solid ones. Respond with ONLY a JSON object, no markdown " +
+    "fences, in exactly this shape:",
+    `{"verdict": "strong_hire" | "hire" | "leaning_no" | "no_hire", "summary": "2-3 sentences", "strengths": ["..."], "gaps": ["..."], "next": ["..."]}`,
+    "\"verdict\" is your honest overall hiring judgement based on everything in this interview — don't default to the middle or to \"hire\" out of politeness. Err toward being too tough rather than too lenient.",
+    "strengths/gaps/next should each be concise, concrete bullet points, not paragraphs."
+  ].join("\n");
+}
+
+// ---------------- App state ----------------
+let session = null;
+const MAX_QUESTIONS = 10; // hard cap across topic questions + follow-ups; interview auto-wraps once hit
+// In-memory fallback: every finished session lands here regardless of whether
+// the persistent storage backend is up, so nothing is lost mid-visit and the
+// sidebar always has something to show. Does not survive a page reload.
+const localSessionCache = [];
+
+function tickClass(tier){ return "tick " + tier; }
+
+function renderRoster(){
+  const list = document.getElementById("roster-list");
+  list.innerHTML = "";
+  DATA.candidates.forEach(c => {
+    const plan = buildPlan(c);
+    const card = document.createElement("div");
+    card.className = "cand-card";
+    card.dataset.id = c.id;
+    const strip = plan.map(p => `<div class="${tickClass(p.tier)}" title="Day ${p.day}: ${p.title} (${p.tier})"></div>`).join("");
+    card.innerHTML = `
+      <p class="cand-name">${c.name}</p>
+      <p class="cand-role">${c.role} · ${c.years}y exp</p>
+      <div class="signal-strip">${strip}</div>
+    `;
+    card.addEventListener("click", () => selectCandidate(c.id));
+    list.appendChild(card);
+  });
+}
+
+function selectCandidate(id){
+  stopCamera(true); // release any camera stream from a previous session before rebuilding the stage — silent, no gating logic on the old session
+  document.querySelectorAll(".cand-card").forEach(el => {
+    el.classList.toggle("active", el.dataset.id === id);
+  });
+  const cand = DATA.candidates.find(c => c.id === id);
+  const plan = buildPlan(cand);
+  const selected = selectTopics(plan, 5);
+  session = {
+    candidate: cand,
+    selected,
+    idx: -1,
+    followupCount: 0,
+    questionCount: 0, // counts every question asked (new topics + follow-ups) toward MAX_QUESTIONS
+    busy: false,
+    cameraGated: false, // true while blocking interview start until camera is on
+    cameraViolationActive: false, // true while paused mid-interview waiting for camera to come back
+    cameraViolationTimer: null,
+    terminationStatus: null, // null/"completed" normally, or "camera_off_timeout" / "tab_switch_violation" / "copy_violation" if force-ended
+    transcript: [],
+    liveReviews: [],
+    done: false,
+    sessionId: Math.random().toString(36).slice(2,8)
+  };
+  renderStage();
+}
+
+function renderStage(){
+  const stage = document.getElementById("stage");
+  if(!session){ return; }
+  const c = session.candidate;
+  stage.innerHTML = `
+    <div class="stage-header">
+      <div class="stage-header-top">
+        <div>
+          <h2>${c.name}</h2>
+          <div class="role">${c.role} · ${c.years} years experience</div>
+        </div>
+        <div class="stage-header-right">
+          <div class="proctor-box">
+            <video id="proctor-video" autoplay playsinline muted></video>
+            <div class="proctor-off" id="proctor-off">Camera off</div>
+          </div>
+          <button id="proctor-toggle" class="proctor-toggle-btn">Enable camera</button>
+          <div class="session-pill">SESSION #${session.sessionId}</div>
+        </div>
+      </div>
+      <p class="proctor-status" id="proctor-status"></p>
+      <p class="integrity-notice">⚠ Switching to another tab/window or copying interview text will end this interview immediately.</p>
+      <div class="focus-row" id="focus-row"></div>
+    </div>
+    <div class="transcript" id="transcript"></div>
+    <div class="composer" id="composer">
+      <input type="text" id="msg-input" placeholder="Type the candidate's reply…" />
+      <button id="send-btn">Send</button>
+    </div>
+  `;
+  renderFocusRow();
+  initProctor();
+  document.getElementById("send-btn").addEventListener("click", onSend);
+  document.getElementById("msg-input").addEventListener("keydown", e => { if(e.key === "Enter") onSend(); });
+
+  // Note: deliberately NOT pushed into session.transcript — the Anthropic API
+  // requires the message list to start with a "user" turn, so this greeting
+  // stays UI-only and the API transcript begins with the candidate's first reply.
+  const welcome = `Welcome, ${c.name.split(" ")[0]}! Thanks for making time for this. I've gone through your progress in the cohort and want to dig into a few specific areas together. Ready when you are — just say go.`;
+  addMessage("interviewer", welcome);
+  applyCameraGate();
+}
+
+// ---------------- Camera proctoring ----------------
+// Local-only webcam preview so the interviewer side can visually confirm the
+// candidate is present. The stream never leaves the browser — nothing is
+// uploaded, recorded, or sent to the API; it's just piped into a <video> tag.
+let proctorStream = null;
+
+// Gate: the interview can't actually start (first question asked) until the
+// camera is on. This is UI-only — never pushed into session.transcript,
+// otherwise it'd break the strict user/assistant alternation the API needs.
+function applyCameraGate(){
+  if(!session) return;
+  if(proctorStream){
+    session.cameraGated = false;
+    return;
+  }
+  session.cameraGated = true;
+  addMessage("interviewer", "Your camera is off. Please turn it on above — the interview will start automatically as soon as it's on.");
+  const input = document.getElementById("msg-input");
+  const btn = document.getElementById("send-btn");
+  if(input){ input.disabled = true; input.placeholder = "Waiting for camera…"; }
+  if(btn) btn.disabled = true;
+}
+
+function releaseCameraGate(){
+  if(!session || !session.cameraGated) return;
+  session.cameraGated = false;
+  const input = document.getElementById("msg-input");
+  const btn = document.getElementById("send-btn");
+  if(input){ input.disabled = false; input.placeholder = "Type the candidate's reply…"; input.focus(); }
+  if(btn) btn.disabled = false;
+  addMessage("interviewer", "Camera's on — thanks. We can begin whenever you're ready, just say go.");
+}
+
+const CAMERA_VIOLATION_SECONDS = 10;
+
+// Mid-interview: camera dropped after the interview was already underway.
+// Pauses the interview, replaces the composer with a live countdown, and
+// either resumes (camera comes back) or force-ends the interview (it doesn't).
+function startCameraViolationTimer(){
+  if(!session || session.done || session.idx === -1) return;
+  if(session.cameraViolationActive) return; // already handling one
+  session.cameraViolationActive = true;
+  session.busy = true; // belt-and-suspenders: blocks onSend even if the composer swap below is somehow bypassed
+  addMessage("interviewer", `Your camera has turned off. The interview is paused — turn it back on within ${CAMERA_VIOLATION_SECONDS} seconds or it will end automatically.`);
+
+  const composer = document.getElementById("composer");
+  let secondsLeft = CAMERA_VIOLATION_SECONDS;
+  const renderCountdown = () => {
+    if(composer) composer.innerHTML = `<div class="composer-note camera-violation">⚠ Camera off — interview ends in ${secondsLeft}s unless it's turned back on.</div>`;
+  };
+  renderCountdown();
+
+  session.cameraViolationTimer = setInterval(() => {
+    if(proctorStream){
+      clearCameraViolation();
+      addMessage("interviewer", "Camera's back on — thanks, let's continue.");
+      restoreComposer();
+      return;
+    }
+    secondsLeft--;
+    if(secondsLeft <= 0){
+      clearInterval(session.cameraViolationTimer);
+      session.cameraViolationTimer = null;
+      endInterviewForCameraOff();
+      return;
+    }
+    renderCountdown();
+  }, 1000);
+}
+
+function clearCameraViolation(){
+  if(session){
+    if(session.cameraViolationTimer){ clearInterval(session.cameraViolationTimer); session.cameraViolationTimer = null; }
+    session.cameraViolationActive = false;
+    session.busy = false;
+  }
+}
+
+function restoreComposer(){
+  const composer = document.getElementById("composer");
+  if(!composer) return;
+  composer.innerHTML = `<input type="text" id="msg-input" placeholder="Type the candidate's reply…" /><button id="send-btn">Send</button>`;
+  const input = document.getElementById("msg-input");
+  document.getElementById("send-btn").addEventListener("click", onSend);
+  input.addEventListener("keydown", e => { if(e.key === "Enter") onSend(); });
+  input.focus();
+}
+
+async function endInterviewForCameraOff(){
+  if(!session || session.done) return;
+  session.cameraViolationActive = false;
+  session.busy = false;
+  session.done = true;
+  session.terminationStatus = "camera_off_timeout";
+  const msg = `This interview has ended automatically — the camera stayed off for more than ${CAMERA_VIOLATION_SECONDS} seconds.`;
+  session.transcript.push({role:"assistant", content: msg});
+  addMessage("interviewer", msg);
+  renderFocusRow();
+  const composer = document.getElementById("composer");
+  if(composer) composer.innerHTML = `<div class="composer-note">Ended due to camera being off — generating feedback and saving automatically…</div>`;
+  await renderReport();
+}
+
+// ---------------- Tab-switch / copy proctoring ----------------
+// Two more integrity signals, same "end the interview" pattern as camera-off,
+// but no grace-period countdown — the violation (leaving the tab, copying
+// question text) has already happened the instant it fires, so there's
+// nothing to wait out. Unlike a dropped camera (which can be a technical
+// hiccup), these are treated as confirmed integrity violations: the report
+// is force-flagged "No Hire" regardless of how the rest of the interview went.
+const PROCTOR_VIOLATION_STATUSES = new Set(["tab_switch_violation", "copy_violation"]);
+
+// Only watch once an interview is actually live: a session exists, isn't
+// already finished, and isn't sitting behind the camera gate (nothing has
+// been asked yet at that point, so there's nothing to protect).
+function isInterviewLive(){
+  return !!session && !session.done && !session.cameraGated;
+}
+
+async function endInterviewForIntegrityViolation(statusKey, message){
+  if(!isInterviewLive()) return;
+  clearCameraViolation(); // in case a camera-off countdown was also mid-flight
+  stopCamera(true); // interview's over — release the webcam silently, same as a normal finish
+  session.busy = false;
+  session.done = true;
+  session.terminationStatus = statusKey;
+  session.transcript.push({role:"assistant", content: message});
+  addMessage("interviewer", message);
+  renderFocusRow();
+  const composer = document.getElementById("composer");
+  if(composer) composer.innerHTML = `<div class="composer-note camera-violation">⚠ Ended — proctoring violation detected. Generating feedback and saving automatically…</div>`;
+  await renderReport();
+}
+
+function handleTabSwitch(){
+  if(document.hidden && isInterviewLive()){
+    endInterviewForIntegrityViolation(
+      "tab_switch_violation",
+      "This interview has ended automatically — you navigated away from this tab during the interview."
+    );
+  }
+}
+
+function handleCopyAttempt(e){
+  if(isInterviewLive()){
+    e.preventDefault(); // block the copy itself, not just react to it after the fact
+    endInterviewForIntegrityViolation(
+      "copy_violation",
+      "This interview has ended automatically — copying interview content isn't allowed."
+    );
+  }
+}
+
+document.addEventListener("visibilitychange", handleTabSwitch);
+document.addEventListener("copy", handleCopyAttempt);
+document.addEventListener("cut", handleCopyAttempt);
+
+function setProctorStatus(text, cls){
+  const el = document.getElementById("proctor-status");
+  if(!el) return;
+  el.textContent = text;
+  el.className = "proctor-status" + (cls ? " " + cls : "");
+}
+
+function initProctor(){
+  const btn = document.getElementById("proctor-toggle");
+  if(!btn) return;
+  btn.addEventListener("click", () => {
+    if(proctorStream) stopCamera();
+    else enableCamera();
+  });
+  // If a previous session's camera was left on, this is a fresh stage render
+  // (new <video> element) so just reflect the "off" state until re-enabled.
+}
+
+async function enableCamera(){
+  const btn = document.getElementById("proctor-toggle");
+  const video = document.getElementById("proctor-video");
+  const off = document.getElementById("proctor-off");
+  if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+    setProctorStatus("This browser doesn't support camera access (or the page isn't served over https/localhost).", "error");
+    return;
+  }
+  btn.disabled = true;
+  btn.textContent = "Requesting…";
+  setProctorStatus("Requesting camera permission…");
+  try{
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false });
+    proctorStream = stream;
+    video.srcObject = stream;
+    off.style.display = "none";
+    btn.textContent = "Disable camera";
+    btn.classList.add("active");
+    setProctorStatus("Camera on — visible to the interviewer only, nothing is recorded or uploaded.", "on");
+    // Catches the camera being lost involuntarily (device unplugged, OS-level
+    // revoke, etc.) — not just the explicit "Disable camera" click.
+    stream.getVideoTracks().forEach(track => {
+      track.addEventListener("ended", () => { if(proctorStream === stream) stopCamera(); });
+    });
+    releaseCameraGate();
+    if(session && session.cameraViolationActive){
+      clearCameraViolation();
+      addMessage("interviewer", "Camera's back on — thanks, let's continue.");
+      restoreComposer();
+    }
+  } catch(e){
+    console.error("Camera access failed:", e);
+    let msg = "Couldn't access the camera.";
+    if(e && e.name === "NotAllowedError") msg = "Camera permission was denied. Allow camera access in your browser's site settings and try again.";
+    else if(e && e.name === "NotFoundError") msg = "No camera was found on this device.";
+    else if(e && e.name === "NotReadableError") msg = "The camera is already in use by another app.";
+    setProctorStatus(msg, "error");
+  } finally {
+    btn.disabled = false;
+    if(!proctorStream) btn.textContent = "Enable camera";
+  }
+}
+
+function stopCamera(silent){
+  if(proctorStream){
+    proctorStream.getTracks().forEach(t => t.stop());
+    proctorStream = null;
+  }
+  const btn = document.getElementById("proctor-toggle");
+  const video = document.getElementById("proctor-video");
+  const off = document.getElementById("proctor-off");
+  if(video) video.srcObject = null;
+  if(off) off.style.display = "flex";
+  if(btn){ btn.textContent = "Enable camera"; btn.classList.remove("active"); }
+  setProctorStatus("");
+  if(silent || !session || session.done) return;
+  if(session.idx === -1){
+    // Still on the pre-start "say go" step — just re-gate it (existing behavior).
+    applyCameraGate();
+  } else {
+    // Interview already underway — pause it and start the 10s countdown.
+    startCameraViolationTimer();
+  }
+}
+
+function renderFocusRow(){
+  const row = document.getElementById("focus-row");
+  if(!row) return;
+  row.innerHTML = session.selected.map((t, i) => {
+    let cls = "focus-chip";
+    if(i < session.idx) cls += " done";
+    if(i === session.idx) cls += " current";
+    return `<div class="${cls}"><span class="dot ${t.tier}"></span>Day ${t.day} · ${t.title}</div>`;
+  }).join("");
+}
+
+function addMessage(role, text){
+  const box = document.getElementById("transcript");
+  const div = document.createElement("div");
+  div.className = "msg " + role;
+  const tag = role === "interviewer" ? "Interviewer" : role === "review" ? "Interviewer · Correction" : session.candidate.name;
+  div.innerHTML = `<span class="tag">${tag}</span>${text}`;
+  box.appendChild(div);
+  box.scrollTop = box.scrollHeight;
+}
+
+function showTyping(){
+  const box = document.getElementById("transcript");
+  const div = document.createElement("div");
+  div.className = "typing";
+  div.id = "typing-indicator";
+  div.innerHTML = "<span></span><span></span><span></span>";
+  box.appendChild(div);
+  box.scrollTop = box.scrollHeight;
+}
+function hideTyping(){
+  const el = document.getElementById("typing-indicator");
+  if(el) el.remove();
+}
+
+async function onSend(){
+  const input = document.getElementById("msg-input");
+  const text = input.value.trim();
+  if(!text || session.done || session.busy || session.cameraGated) return;
+  addMessage("candidate", text);
+  session.transcript.push({role:"user", content:text});
+  input.value = "";
+  session.busy = true;
+  document.getElementById("send-btn").disabled = true;
+  showTyping();
+  try{
+    await advance();
+  } finally {
+    hideTyping();
+    session.busy = false;
+    const btn = document.getElementById("send-btn");
+    if(btn) btn.disabled = false;
+  }
+}
+
+async function advance(){
+  // First reply after welcome -> ask first topic
+  if(session.idx === -1){
+    await askTopic(0, true);
+    return;
+  }
+
+  const current = session.selected[session.idx];
+  const isLast = session.idx === session.selected.length - 1;
+  const followupAvailable = session.followupCount < 1;
+
+  let turn;
+  if(offlineMode){
+    turn = offlineJudgeTurn(session, current, isLast);
+  } else {
+    try{
+      const raw = await callClaude(turnSystemPrompt(session, current), session.transcript);
+      turn = parseJSON(raw);
+    } catch(e){
+      console.error("Live judging call failed, using fallback:", e);
+      if(!userApiKey){
+        setApiKeyStatus("Live judging call failed — paste your Anthropic API key above to enable corrections outside claude.ai.", "error");
+      } else {
+        setApiKeyStatus("Live judging call failed with the key provided — check that it's valid and has credits.", "error");
+      }
+      turn = { verdict: "correct", review: "", action: "ask_new_topic", message: null }; // safe fallback: just move on
+    }
+  }
+
+  // Wrong or partial answer -> surface a personalized correction right now,
+  // while the question is still fresh, before moving on.
+  if((turn.verdict === "incorrect" || turn.verdict === "partial") && turn.review){
+    session.transcript.push({role:"assistant", content:turn.review, isReview:true});
+    addMessage("review", turn.review);
+    session.liveReviews = session.liveReviews || [];
+    const existing = session.liveReviews.find(r => r.day === current.day);
+    const entry = {day: current.day, title: current.title, verdict: turn.verdict, review: turn.review};
+    if(existing) Object.assign(existing, entry); else session.liveReviews.push(entry);
+  }
+
+  let action = turn.action;
+  if(action === "follow_up" && !followupAvailable) action = "ask_new_topic";
+  if(action === "wrap_up" && !isLast) action = "ask_new_topic";
+
+  // Hard cap: once MAX_QUESTIONS have already been asked, don't ask another
+  // (whether that would've been a follow-up or the next topic) — wrap up
+  // and move straight into feedback instead.
+  if(session.questionCount >= MAX_QUESTIONS && action !== "wrap_up"){
+    await finishInterview(`We've covered a lot of ground — that's ${MAX_QUESTIONS} questions in, so let's stop there and I'll put together your feedback now.`, true);
+    return;
+  }
+
+  if(action === "follow_up"){
+    session.followupCount++;
+    const msg = turn.message || FALLBACK_FOLLOWUPS[current.tier] || "Can you say a bit more about that?";
+    session.transcript.push({role:"assistant", content:msg});
+    addMessage("interviewer", msg);
+    session.questionCount++;
+    return;
+  }
+
+  if(action === "ask_new_topic"){
+    if(isLast){
+      await finishInterview(null); // static closing, matches the real backend's safety behavior
+      return;
+    }
+    await askTopic(session.idx + 1, false);
+    return;
+  }
+
+  // action === "wrap_up" && isLast
+  await finishInterview(turn.message);
+}
+
+async function askTopic(idx, isFirst){
+  session.idx = idx;
+  session.followupCount = 0;
+  const t = session.selected[idx];
+  renderFocusRow();
+  let message;
+  if(offlineMode){
+    message = QUESTION_TEMPLATES[t.tier](t);
+  } else {
+    try{
+      message = await callClaude(questionOnlySystemPrompt(session, t, isFirst), session.transcript);
+      message = message.trim();
+    } catch(e){
+      console.error("Live question call failed, using fallback:", e);
+      message = QUESTION_TEMPLATES[t.tier](t);
+    }
+  }
+  session.transcript.push({role:"assistant", content:message});
+  addMessage("interviewer", message);
+  session.questionCount++;
+}
+
+async function finishInterview(closingMessage, auto){
+  session.done = true;
+  stopCamera(true); // interview's over, no need to keep the webcam running into the report screen — silent, we're already ending on purpose
+  const msg = closingMessage || "That covers everything I wanted to explore today — thank you for walking me through your work in detail. I'll put together feedback now.";
+  session.transcript.push({role:"assistant", content:msg});
+  addMessage("interviewer", msg);
+  renderFocusRow();
+  if(auto){
+    document.getElementById("composer").innerHTML = `<div class="composer-note">Question limit reached — generating feedback and saving automatically…</div>`;
+    await renderReport();
+    return;
+  }
+  document.getElementById("composer").innerHTML = `<button id="report-btn" class="btn" style="width:100%">Generate feedback report →</button>`;
+  document.getElementById("report-btn").addEventListener("click", renderReport);
+}
+
+async function renderReport(){
+  const stage = document.getElementById("stage");
+  stage.innerHTML = `
+    <div class="stage-header"><h2>Reviewing the transcript…</h2></div>
+    <div class="report"><div class="report-summary">${offlineMode ? "Building a signal-based report from the interview…" : "Claude is judging each answer against the rubric and writing personalized feedback — one moment."}</div></div>
+  `;
+
+  let feedback;
+  if(offlineMode){
+    feedback = buildFallbackFeedback(session);
+  } else {
+    try{
+      const feedbackMessages = [
+        ...session.transcript,
+        {role:"user", content:"Please provide your final structured feedback now, per the JSON format specified in your instructions."}
+      ];
+      const raw = await callClaude(feedbackSystemPrompt(session), feedbackMessages);
+      feedback = parseJSON(raw);
+    } catch(e){
+      console.error("Live feedback call failed, using fallback:", e);
+      feedback = buildFallbackFeedback(session);
+    }
+  }
+  feedback.terminationStatus = session.terminationStatus || "completed";
+
+  // Consequence: a confirmed integrity violation (tab switch / copy attempt)
+  // overrides whatever verdict the transcript would otherwise have earned —
+  // it's flagged No Hire regardless of how the answered questions went, and
+  // called out explicitly in the summary and gaps so it isn't missed.
+  if(PROCTOR_VIOLATION_STATUSES.has(feedback.terminationStatus)){
+    const reason = feedback.terminationStatus === "tab_switch_violation"
+      ? "Interview was ended automatically after the candidate navigated away from the interview tab."
+      : "Interview was ended automatically after the candidate attempted to copy interview content.";
+    feedback.verdict = "no_hire";
+    feedback.summary = `${reason} This is treated as an academic-integrity violation and overrides the rest of the interview signal. ${feedback.summary || ""}`.trim();
+    feedback.gaps = [reason, ...(feedback.gaps || [])];
+  }
+
+  renderReportCard(feedback);
+  saveInterview(feedback); // fire-and-forget; status is reflected in the report UI
+}
+
+function buildFallbackFeedback(session){
+  const c = session.candidate;
+  const strengths = session.selected.filter(t => t.tier === "solid" || t.tier === "first_try");
+  const gaps = session.selected.filter(t => t.tier === "failed" || t.tier === "skipped" || t.tier === "struggled");
+  // Harsher heuristic: weigh in what actually happened live in the interview
+  // (not just cohort history), and don't let ties default to "hire".
+  const liveReviews = session.liveReviews || [];
+  const liveIncorrect = liveReviews.filter(r => r.verdict === "incorrect").length;
+  const livePartial = liveReviews.filter(r => r.verdict === "partial").length;
+  const gapScore = gaps.length + liveIncorrect + livePartial * 0.5;
+  let verdict;
+  if(liveIncorrect >= 2 || gapScore >= strengths.length + 2) verdict = "no_hire";
+  else if(gapScore >= strengths.length) verdict = "leaning_no";
+  else verdict = "hire";
+  return {
+    verdict,
+    summary: `(Live review unavailable — showing a signal-based summary instead.) ${c.name.split(" ")[0]}'s interview covered ${session.selected.length} topics chosen from their actual cohort performance${liveReviews.length ? `, with ${liveIncorrect + livePartial} of ${liveReviews.length} live corrections flagged as incorrect or partial` : ""}.`,
+    strengths: strengths.length
+      ? strengths.map(t => `Solid grasp of ${t.title.toLowerCase()}, applied cleanly with ${t.curriculum ? t.curriculum.tools[0] : "the right tools"}.`)
+      : [`Completed all ${c.missions.length} tracked missions in the cohort, showing consistency end to end.`],
+    gaps: gaps.map(t => {
+      if(t.tier === "failed") return `${t.title} — didn't pass in the cohort assessment; needs a revisit.`;
+      if(t.tier === "skipped") return `${t.title} — skipped entirely, no hands-on signal yet.`;
+      return `${t.title} — passed only after ${t.attempts} attempts, worth reinforcing.`;
+    }).concat(liveReviews.filter(r => r.verdict === "incorrect" || r.verdict === "partial").map(r =>
+      `${r.title} — ${r.verdict} live in this interview, not just a historical signal.`
+    )),
+    next: gaps.length || liveIncorrect || livePartial
+      ? gaps.map(t => GAP_NEXT[t.tier] ? GAP_NEXT[t.tier](t) : `Reinforce ${t.title}.`)
+      : [`Consider pairing ${c.name.split(" ")[0]} with a stretch project — the fundamentals are already solid.`]
+  };
+}
+
+// Topics to revisit — deterministic from mission history, always populated
+// regardless of how Claude phrases its own gaps/next fields.
+const FOCUS_NOTE = {
+  failed: "Didn't pass this in the cohort — revisit fundamentals.",
+  skipped: "Skipped entirely — no hands-on practice yet.",
+  struggled: t => `Passed, but took ${t.attempts} attempts — build fluency.`
+};
+function focusAreas(sess){
+  return sess.selected.filter(t => t.tier === "failed" || t.tier === "skipped" || t.tier === "struggled");
+}
+
+const VERDICT_LABEL = {
+  strong_hire: {text:"Strong Hire", cls:"positive"},
+  hire: {text:"Hire", cls:"positive"},
+  leaning_no: {text:"Leaning No", cls:"mixed"},
+  no_hire: {text:"No Hire", cls:"negative"}
+};
+
+const TERMINATION_LABEL = {
+  camera_off_timeout: {text:"⚠ Ended early — camera was off for over 10 seconds", cls:"negative"},
+  tab_switch_violation: {text:"⚠ Ended early — switched away from the interview tab", cls:"negative"},
+  copy_violation: {text:"⚠ Ended early — attempted to copy interview content", cls:"negative"}
+  // "completed" (or missing) renders no badge — that's the normal case.
+};
+
+function renderReportCard(feedback){
+  const c = session.candidate;
+  const strengthLines = feedback.strengths && feedback.strengths.length ? feedback.strengths : ["No specific strengths noted."];
+  const gapLines = feedback.gaps || [];
+  const nextLines = feedback.next && feedback.next.length ? feedback.next : ["No specific next steps noted."];
+  const focus = focusAreas(session);
+
+  const focusHtml = focus.length
+    ? focus.map(t => {
+        const note = typeof FOCUS_NOTE[t.tier] === "function" ? FOCUS_NOTE[t.tier](t) : FOCUS_NOTE[t.tier];
+        return `<div class="focus-item">
+          <span class="dot ${t.tier}"></span>
+          <div>
+            <div class="fi-day">DAY ${t.day}</div>
+            <div class="fi-title">${t.title}</div>
+            <div class="fi-note">${note}</div>
+          </div>
+        </div>`;
+      }).join("")
+    : `<div class="focus-item"><span class="dot first_try"></span><div><div class="fi-title">Nothing flagged</div><div class="fi-note">Every topic covered came back solid — no re-study needed from mission history alone.</div></div></div>`;
+
+  const liveReviews = session.liveReviews || [];
+  const correctionsHtml = liveReviews.length
+    ? liveReviews.map(r => `<div class="focus-item">
+          <span class="dot ${r.verdict === "incorrect" ? "failed" : "struggled"}"></span>
+          <div>
+            <div class="fi-day">DAY ${r.day}</div>
+            <div class="fi-title">${r.title}</div>
+            <div class="fi-note">${r.review}</div>
+          </div>
+        </div>`).join("")
+    : `<div class="focus-item"><span class="dot first_try"></span><div><div class="fi-title">No corrections needed</div><div class="fi-note">Every answer given in this interview was accurate.</div></div></div>`;
+
+  const verdictInfo = VERDICT_LABEL[feedback.verdict];
+  const judgementHtml = verdictInfo ? `<div class="judgement-badge ${verdictInfo.cls}">Judgement: ${verdictInfo.text}</div>` : "";
+  const termInfo = TERMINATION_LABEL[feedback.terminationStatus];
+  const terminationHtml = termInfo ? `<div class="judgement-badge ${termInfo.cls}">${termInfo.text}</div>` : "";
+
+  const stage = document.getElementById("stage");
+  stage.innerHTML = `
+    <div class="stage-header">
+      <div class="stage-header-top">
+        <div>
+          <h2>${c.name} — Feedback Report</h2>
+          <div class="role">${c.role}</div>
+        </div>
+        <div class="session-pill">SESSION #${session.sessionId} · DONE</div>
+      </div>
+    </div>
+    <div class="report">
+      ${judgementHtml}
+      ${terminationHtml}
+      <div class="report-summary">${feedback.summary || ""}</div>
+
+      <div class="focus-section">
+        <h3>Corrections given during this interview</h3>
+        <div class="focus-list">${correctionsHtml}</div>
+      </div>
+
+      <div class="focus-section">
+        <h3>Topics to look over again (from cohort history)</h3>
+        <div class="focus-list">${focusHtml}</div>
+      </div>
+
+      <div class="report-grid">
+        <div class="report-col strengths">
+          <h3>Strengths</h3>
+          <ul>${strengthLines.map(s => `<li>${s}</li>`).join("")}</ul>
+        </div>
+        <div class="report-col gaps">
+          <h3>Gaps</h3>
+          <ul>${gapLines.length ? gapLines.map(s => `<li>${s}</li>`).join("") : "<li>No material gaps identified from mission history.</li>"}</ul>
+        </div>
+      </div>
+      <div class="report-next">
+        <h3>Next steps</h3>
+        <ul>${nextLines.map(s => `<li>${s}</li>`).join("")}</ul>
+      </div>
+
+      <div class="save-status" id="save-status">Saving this interview…</div>
+      <div class="report-actions">
+        <button class="btn" id="restart-btn">Start another interview</button>
+        <button class="btn secondary" id="download-btn">Download transcript (.txt)</button>
+        <button class="btn secondary" id="download-session-btn">Download full session (.json)</button>
+      </div>
+    </div>
+  `;
+  document.getElementById("restart-btn").addEventListener("click", () => {
+    session = null;
+    document.querySelectorAll(".cand-card").forEach(el => el.classList.remove("active"));
+    document.getElementById("stage").innerHTML = `
+      <div class="stage-empty">
+        <h2>No candidate selected</h2>
+        <p>Choose someone from the roster on the left to start a new interview.</p>
+      </div>`;
+  });
+  document.getElementById("download-btn").addEventListener("click", () => downloadTranscript(feedback));
+  document.getElementById("download-session-btn").addEventListener("click", () => downloadSessionJSON(buildSessionPayload(session, feedback)));
+}
+
+// ---------------- Persistence: save finished interviews, list & replay them ----------------
+async function withRetry(fn, attempts=3, delayMs=600){
+  let lastErr;
+  for(let i=0;i<attempts;i++){
+    try{ return await fn(); }
+    catch(e){ lastErr = e; if(i < attempts-1) await new Promise(r => setTimeout(r, delayMs * (i+1))); }
+  }
+  throw lastErr;
+}
+
+function buildSessionPayload(sess, feedback){
+  return {
+    key: `interview:${sess.candidate.id}:${sess.sessionId}`,
+    candidateId: sess.candidate.id,
+    candidateName: sess.candidate.name,
+    role: sess.candidate.role,
+    timestamp: Date.now(),
+    transcript: sess.transcript,
+    focusAreas: focusAreas(sess).map(t => ({day:t.day, title:t.title, tier:t.tier})),
+    liveReviews: sess.liveReviews || [],
+    feedback
+  };
+}
+
+async function saveInterview(feedback){
+  const statusEl = document.getElementById("save-status");
+  const payload = buildSessionPayload(session, feedback);
+  const key = payload.key;
+
+  // Always keep a local copy first — this is what actually guarantees the
+  // full session (not just the raw chat) isn't lost for this visit.
+  const existingIdx = localSessionCache.findIndex(e => e.key === key);
+  if(existingIdx >= 0) localSessionCache[existingIdx] = payload; else localSessionCache.unshift(payload);
+  refreshSavedList();
+
+  try{
+    const result = await withRetry(() => window.storage.set(key, JSON.stringify(payload), false));
+    if(!result) throw new Error("Storage returned no result");
+    if(statusEl){ statusEl.textContent = "✓ Saved — you can revisit this from the roster sidebar."; statusEl.classList.add("ok"); }
+  } catch(e){
+    console.error("Persistent save failed, kept locally instead:", e);
+    if(statusEl){
+      statusEl.innerHTML = `⚠ Storage service is unavailable — ${session.candidate.name.split(" ")[0]}'s session is kept locally for this visit but won't survive a reload. Download it below to keep it permanently.`;
+      statusEl.classList.add("err");
+    }
+  }
+}
+
+let savedListRequestId = 0;
+
+async function refreshSavedList(){
+  const listEl = document.getElementById("saved-list");
+  if(!listEl) return;
+  const myRequestId = ++savedListRequestId; // guards against a stale in-flight call overwriting a newer one
+
+  let remoteEntries = [];
+  let remoteFailed = false;
+  try{
+    const listing = await withRetry(() => window.storage.list("interview:", false));
+    const keys = (listing && listing.keys) || [];
+    for(const k of keys){
+      try{
+        const res = await withRetry(() => window.storage.get(k, false), 2, 400);
+        if(res && res.value) remoteEntries.push({key:k, data: JSON.parse(res.value)});
+      } catch(e){ /* skip unreadable entry */ }
+    }
+  } catch(e){
+    console.error("Loading from storage failed, falling back to local session cache:", e);
+    remoteFailed = true;
+  }
+
+  if(myRequestId !== savedListRequestId) return; // a newer call superseded this one; don't render stale data
+
+  // Merge: local cache wins on key collisions since it's always the freshest
+  // copy of a session just finished in this visit.
+  const merged = new Map();
+  remoteEntries.forEach(e => merged.set(e.key, e.data));
+  localSessionCache.forEach(data => merged.set(data.key, data));
+  const entries = Array.from(merged.values()).sort((a,b) => b.timestamp - a.timestamp);
+
+  if(entries.length === 0){
+    listEl.innerHTML = remoteFailed
+      ? `<p class="saved-empty">Storage unavailable and nothing saved yet this visit. <a href="#" id="retry-list" style="color:var(--gold);">Retry</a></p>`
+      : `<p class="saved-empty">No saved interviews yet.</p>`;
+  } else {
+    listEl.innerHTML = "";
+    if(remoteFailed){
+      const note = document.createElement("p");
+      note.className = "saved-empty";
+      note.innerHTML = `⚠ Storage unavailable — showing this visit's sessions only. <a href="#" id="retry-list" style="color:var(--gold);">Retry</a>`;
+      listEl.appendChild(note);
+    }
+    entries.forEach(data => {
+      const div = document.createElement("div");
+      div.className = "saved-item";
+      const date = new Date(data.timestamp).toLocaleString();
+      div.innerHTML = `<span class="si-name">${data.candidateName}</span><span class="si-meta">${date}</span>`;
+      div.addEventListener("click", () => replaySavedInterview(data));
+      listEl.appendChild(div);
+    });
+  }
+  const retryLink = document.getElementById("retry-list");
+  if(retryLink){
+    retryLink.addEventListener("click", (ev) => {
+      ev.preventDefault();
+      // Give immediate feedback so a click that fails again doesn't look
+      // like it did nothing — without this, a repeat failure re-renders
+      // the exact same message and the click appears to have no effect.
+      retryLink.textContent = "Retrying…";
+      retryLink.style.pointerEvents = "none";
+      retryLink.style.opacity = "0.6";
+      refreshSavedList();
+    });
+  }
+}
+
+function replaySavedInterview(data){
+  session = null;
+  document.querySelectorAll(".cand-card").forEach(el => el.classList.remove("active"));
+  const stage = document.getElementById("stage");
+  const focusHtml = (data.focusAreas && data.focusAreas.length)
+    ? data.focusAreas.map(t => `<div class="focus-item"><span class="dot ${t.tier}"></span><div><div class="fi-day">DAY ${t.day}</div><div class="fi-title">${t.title}</div></div></div>`).join("")
+    : `<div class="focus-item"><span class="dot first_try"></span><div><div class="fi-title">Nothing flagged</div></div></div>`;
+  const liveReviews = data.liveReviews || [];
+  const correctionsHtml = liveReviews.length
+    ? liveReviews.map(r => `<div class="focus-item"><span class="dot ${r.verdict === "incorrect" ? "failed" : "struggled"}"></span><div><div class="fi-day">DAY ${r.day}</div><div class="fi-title">${r.title}</div><div class="fi-note">${r.review}</div></div></div>`).join("")
+    : `<div class="focus-item"><span class="dot first_try"></span><div><div class="fi-title">No corrections needed</div></div></div>`;
+  const verdictInfo = VERDICT_LABEL[data.feedback && data.feedback.verdict];
+  const judgementHtml = verdictInfo ? `<div class="judgement-badge ${verdictInfo.cls}">Judgement: ${verdictInfo.text}</div>` : "";
+  const termInfo = TERMINATION_LABEL[data.feedback && data.feedback.terminationStatus];
+  const terminationHtml = termInfo ? `<div class="judgement-badge ${termInfo.cls}">${termInfo.text}</div>` : "";
+  const transcriptHtml = data.transcript.map(m => {
+    const role = m.role === "user" ? "candidate" : (m.isReview ? "review" : "interviewer");
+    const tag = m.role === "user" ? data.candidateName : (m.isReview ? "Interviewer · Correction" : "Interviewer");
+    return `<div class="msg ${role}"><span class="tag">${tag}</span>${m.content}</div>`;
+  }).join("");
+  stage.innerHTML = `
+    <div class="stage-header">
+      <div class="stage-header-top">
+        <div>
+          <h2>${data.candidateName} — Saved Interview</h2>
+          <div class="role">${data.role} · ${new Date(data.timestamp).toLocaleString()}</div>
+        </div>
+        <div class="session-pill">REPLAY</div>
+      </div>
+    </div>
+    <div class="transcript" style="flex:none;max-height:38vh;">${transcriptHtml}</div>
+    <div class="report" style="border-top:1px solid var(--border);">
+      ${judgementHtml}
+      ${terminationHtml}
+      <div class="report-summary">${data.feedback && data.feedback.summary ? data.feedback.summary : ""}</div>
+      <div class="focus-section">
+        <h3>Corrections given during this interview</h3>
+        <div class="focus-list">${correctionsHtml}</div>
+      </div>
+      <div class="focus-section">
+        <h3>Topics to look over again (from cohort history)</h3>
+        <div class="focus-list">${focusHtml}</div>
+      </div>
+      <div class="report-grid">
+        <div class="report-col strengths">
+          <h3>Strengths</h3>
+          <ul>${(data.feedback && data.feedback.strengths || []).map(s => `<li>${s}</li>`).join("") || "<li>—</li>"}</ul>
+        </div>
+        <div class="report-col gaps">
+          <h3>Gaps</h3>
+          <ul>${(data.feedback && data.feedback.gaps || []).map(s => `<li>${s}</li>`).join("") || "<li>—</li>"}</ul>
+        </div>
+      </div>
+      <div class="report-actions">
+        <button class="btn" id="back-btn">Back to roster</button>
+        <button class="btn secondary" id="download-session-btn">Download full session (.json)</button>
+      </div>
+    </div>
+  `;
+  document.getElementById("download-session-btn").addEventListener("click", () => downloadSessionJSON(data));
+  document.getElementById("back-btn").addEventListener("click", () => {
+    document.getElementById("stage").innerHTML = `
+      <div class="stage-empty">
+        <h2>No candidate selected</h2>
+        <p>Choose someone from the roster on the left to start a new interview.</p>
+
+      </div>`;
+  });
+}
+
+function downloadTranscript(feedback){
+  const lines = [];
+  lines.push(`Interview transcript — ${session.candidate.name} (${session.candidate.role})`);
+  lines.push(`Session #${session.sessionId} — ${new Date().toLocaleString()}`);
+  lines.push("");
+  session.transcript.forEach(m => {
+    lines.push(`[${m.role === "user" ? session.candidate.name : "Interviewer"}] ${m.content}`);
+  });
+  lines.push("");
+  lines.push("--- Feedback ---");
+  const verdictInfo = VERDICT_LABEL[feedback.verdict];
+  if(verdictInfo) lines.push(`Judgement: ${verdictInfo.text}`);
+  lines.push(feedback.summary || "");
+  lines.push("");
+  lines.push("Corrections given during this interview:");
+  (session.liveReviews || []).forEach(r => lines.push(`- Day ${r.day} (${r.title}, ${r.verdict}): ${r.review}`));
+  if(!(session.liveReviews && session.liveReviews.length)) lines.push("- None — every answer was judged correct in the moment.");
+  lines.push("");
+  lines.push("Topics to look over again (from cohort history):");
+  focusAreas(session).forEach(t => lines.push(`- Day ${t.day}: ${t.title}`));
+  lines.push("");
+  lines.push("Strengths:");
+  (feedback.strengths || []).forEach(s => lines.push("- " + s));
+  lines.push("");
+  lines.push("Next steps:");
+  (feedback.next || []).forEach(s => lines.push("- " + s));
+
+  const blob = new Blob([lines.join("\n")], {type:"text/plain"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${session.candidate.name.replace(/\s+/g,"_")}_interview_${session.sessionId}.txt`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+// Exports the ENTIRE session — full transcript, live corrections, cohort
+// focus areas, and the final feedback/judgement — as one JSON file named
+// after the candidate. This is the permanent copy when storage is down.
+function downloadSessionJSON(payload){
+  const blob = new Blob([JSON.stringify(payload, null, 2)], {type:"application/json"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  const safeName = payload.candidateName.replace(/\s+/g,"_");
+  a.download = `${safeName}_session_${new Date(payload.timestamp).toISOString().slice(0,10)}.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+initApiKeyBox();
+renderRoster();
+refreshSavedList();
+const leaderboardBtn = document.getElementById("leaderboard-btn");
+if(leaderboardBtn) leaderboardBtn.addEventListener("click", showLeaderboard);
+</script>
+</body>
+</html>
